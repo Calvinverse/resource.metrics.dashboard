@@ -35,7 +35,7 @@ describe 'resource_metrics_dashboard::grafana' do
           {
             "checks": [
               {
-                "http": "http://localhost:3000/api/ping",
+                "http": "http://localhost:3000/api/health",
                 "id": "grafana_http_health_check",
                 "interval": "30s",
                 "method": "GET",
@@ -110,7 +110,7 @@ describe 'resource_metrics_dashboard::grafana' do
 
       # The full public facing url you use in browser, used for redirects and emails
       # If you use reverse proxy and sub path specify full url (with sub path)
-      root_url = http://localhost:3000/dashboards/metrics
+      root_url = %(protocol)s://%(domain)s:%(http_port)s/dashboards/metrics
 
       # Log web requests
       ;router_logging = false

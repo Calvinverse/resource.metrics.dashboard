@@ -38,7 +38,7 @@ file '/etc/consul/conf.d/grafana-http.json' do
         {
           "checks": [
             {
-              "http": "http://localhost:#{grafana_http_port}/api/ping",
+              "http": "http://localhost:#{grafana_http_port}/api/health",
               "id": "grafana_http_health_check",
               "interval": "30s",
               "method": "GET",
@@ -125,7 +125,7 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
 
     # The full public facing url you use in browser, used for redirects and emails
     # If you use reverse proxy and sub path specify full url (with sub path)
-    root_url = http://localhost:#{grafana_http_port}/#{proxy_path}
+    root_url = %(protocol)s://%(domain)s:%(http_port)s/#{proxy_path}
 
     # Log web requests
     ;router_logging = false

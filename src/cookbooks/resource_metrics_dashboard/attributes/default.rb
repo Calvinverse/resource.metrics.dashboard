@@ -35,8 +35,12 @@ default['grafana']['webserver'] = '' # don't install the webserver
 default['grafana']['port']['http'] = 3000
 default['grafana']['proxy_path'] = 'dashboards/metrics'
 
+default['grafana']['provisioning_dir'] = '/etc/grafana/provisioning'
+
 default['grafana']['consul_template']['ini'] = 'grafana_custom_ini.ctmpl'
 default['grafana']['consul_template']['ldap'] = 'grafana_ldap.ctmpl'
+default['grafana']['consul_template']['provisioning_datasources_script'] = 'grafana_datasources.ctmpl'
+default['grafana']['consul_template']['provisioning_dashboards_script'] = 'grafana_dashboards.ctmpl'
 
 default['grafana']['telegraf']['consul_template_inputs_file'] = 'telegraf_grafana_inputs.ctmpl'
 

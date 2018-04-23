@@ -9,8 +9,37 @@ describe 'resource_metrics_dashboard::grafana' do
 
   context 'installs Grafana' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
+
     it 'installs grafana' do
       expect(chef_run).to include_recipe('grafana::default')
+    end
+  end
+
+  context 'creates the provisioning directories' do
+    let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
+
+    it 'creates the provisioning directory at /etc/grafana/provisioning' do
+      expect(chef_run).to create_directory('/etc/grafana/provisioning').with(
+        group: 'grafana',
+        mode: '775',
+        owner: 'grafana'
+      )
+    end
+
+    it 'creates the datasources provisioning directory at /etc/grafana/provisioning/datasources' do
+      expect(chef_run).to create_directory('/etc/grafana/provisioning/datasources').with(
+        group: 'grafana',
+        mode: '775',
+        owner: 'grafana'
+      )
+    end
+
+    it 'creates the dashboards provisioning directory at /etc/grafana/provisioning/dashboards' do
+      expect(chef_run).to create_directory('/etc/grafana/provisioning/dashboards').with(
+        group: 'grafana',
+        mode: '775',
+        owner: 'grafana'
+      )
     end
   end
 
@@ -88,7 +117,7 @@ describe 'resource_metrics_dashboard::grafana' do
       ;plugins = /var/lib/grafana/plugins
 
       # folder that contains provisioning config files that grafana will apply on startup and while running.
-      provisioning = /etc/grafana/conf/provisioning
+      provisioning = /etc/grafana/provisioning
 
       #################################### Server ####################################
       [server]
@@ -665,21 +694,38 @@ describe 'resource_metrics_dashboard::grafana' do
         .with_content(consul_template_grafana_ldap_inputs_content)
     end
 
-    consul_template_grafana_provisioning_datasource_inputs_content = <<~CONF
+    grafana_provisioning_datasources_script_template_content = <<~CONF
+      #!/bin/sh
+
+      {{ range ls "config/services/dashboards/metrics/provisioning/datasources" }}
+      cat <<EOT > /etc/grafana/provisioning/datasources/{{ .Key }}.yaml
+      {{ .Value }}
+      EOT
+      {{ end }}
+
+      if ( ! (systemctl is-active --quiet grafana-server) ); then
+        systemctl restart grafana-server
+      fi
+    CONF
+    it 'creates grafana datasources provisioning script template file in the consul-template template directory' do
+      expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_datasources.ctmpl')
+        .with_content(grafana_provisioning_datasources_script_template_content)
+    end
+
+    consul_template_grafana_provisioning_datasources_inputs_content = <<~CONF
       # This block defines the configuration for a template. Unlike other blocks,
       # this block may be specified multiple times to configure multiple templates.
       # It is also possible to configure templates via the CLI directly.
       template {
-        # This option allows embedding the contents of a template in the configuration
-        # file rather then supplying the `source` path to the template file. This is
-        # useful for short templates. This option is mutually exclusive with the
-        # `source` option.
-        contents = "{{ keyOrDefault \"config/services/dashboards/metrics/provisioning/datasources\" \"\"}}"
+        # This is the source file on disk to use as the input template. This is often
+        # called the "Consul Template template". This option is required if not using
+        # the `contents` option.
+        source = "/etc/consul-template.d/templates/grafana_datasources.ctmpl"
 
         # This is the destination path on disk where the source template will render.
         # If the parent directories do not exist, Consul Template will attempt to
         # create them, unless create_dest_dirs is false.
-        destination = "/etc/grafana/conf/provisioning/datasources/datasource.yaml"
+        destination = "/tmp/grafana_datasources.sh"
 
         # This options tells Consul Template to create the parent directories of the
         # destination path if they do not exist. The default value is true.
@@ -689,7 +735,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl reload grafana-server"
+        command = "sh /tmp/grafana_datasources.sh"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.
@@ -733,7 +779,95 @@ describe 'resource_metrics_dashboard::grafana' do
     CONF
     it 'creates grafana_provisioning_datasources.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_provisioning_datasources.hcl')
-        .with_content(consul_template_grafana_provisioning_datasource_inputs_content)
+        .with_content(consul_template_grafana_provisioning_datasources_inputs_content)
+    end
+
+    grafana_provisioning_dashboards_script_template_content = <<~CONF
+      #!/bin/sh
+
+      {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
+      cat <<EOT > /etc/grafana/provisioning/dashboards/{{ .Key }}.yaml
+      {{ .Value }}
+      EOT
+      {{ end }}
+
+      if ( ! (systemctl is-active --quiet grafana-server) ); then
+        systemctl restart grafana-server
+      fi
+    CONF
+    it 'creates grafana dashboards provisioning script template file in the consul-template template directory' do
+      expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_dashboards.ctmpl')
+        .with_content(grafana_provisioning_dashboards_script_template_content)
+    end
+
+    consul_template_grafana_provisioning_dashboards_inputs_content = <<~CONF
+      # This block defines the configuration for a template. Unlike other blocks,
+      # this block may be specified multiple times to configure multiple templates.
+      # It is also possible to configure templates via the CLI directly.
+      template {
+        # This is the source file on disk to use as the input template. This is often
+        # called the "Consul Template template". This option is required if not using
+        # the `contents` option.
+        source = "/etc/consul-template.d/templates/grafana_dashboards.ctmpl"
+
+        # This is the destination path on disk where the source template will render.
+        # If the parent directories do not exist, Consul Template will attempt to
+        # create them, unless create_dest_dirs is false.
+        destination = "/tmp/grafana_dashboards.sh"
+
+        # This options tells Consul Template to create the parent directories of the
+        # destination path if they do not exist. The default value is true.
+        create_dest_dirs = false
+
+        # This is the optional command to run when the template is rendered. The
+        # command will only run if the resulting template changes. The command must
+        # return within 30s (configurable), and it must have a successful exit code.
+        # Consul Template is not a replacement for a process monitor or init system.
+        command = "sh /tmp/grafana_dashboards.sh"
+
+        # This is the maximum amount of time to wait for the optional command to
+        # return. Default is 30s.
+        command_timeout = "15s"
+
+        # Exit with an error when accessing a struct or map field/key that does not
+        # exist. The default behavior will print "<no value>" when accessing a field
+        # that does not exist. It is highly recommended you set this to "true" when
+        # retrieving secrets from Vault.
+        error_on_missing_key = false
+
+        # This is the permission to render the file. If this option is left
+        # unspecified, Consul Template will attempt to match the permissions of the
+        # file that already exists at the destination path. If no file exists at that
+        # path, the permissions are 0644.
+        perms = 0755
+
+        # This option backs up the previously rendered template at the destination
+        # path before writing a new one. It keeps exactly one backup. This option is
+        # useful for preventing accidental changes to the data without having a
+        # rollback strategy.
+        backup = true
+
+        # These are the delimiters to use in the template. The default is "{{" and
+        # "}}", but for some templates, it may be easier to use a different delimiter
+        # that does not conflict with the output file itself.
+        left_delimiter  = "{{"
+        right_delimiter = "}}"
+
+        # This is the `minimum(:maximum)` to wait before rendering a new template to
+        # disk and triggering a command, separated by a colon (`:`). If the optional
+        # maximum value is omitted, it is assumed to be 4x the required minimum value.
+        # This is a numeric time with a unit suffix ("5s"). There is no default value.
+        # The wait value for a template takes precedence over any globally-configured
+        # wait.
+        wait {
+          min = "2s"
+          max = "10s"
+        }
+      }
+    CONF
+    it 'creates grafana_provisioning_dashboards.hcl in the consul-template template directory' do
+      expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_provisioning_dashboards.hcl')
+        .with_content(consul_template_grafana_provisioning_dashboards_inputs_content)
     end
   end
 

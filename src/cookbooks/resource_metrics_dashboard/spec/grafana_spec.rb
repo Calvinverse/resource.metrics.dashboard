@@ -493,7 +493,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # This is the destination path on disk where the source template will render.
         # If the parent directories do not exist, Consul Template will attempt to
         # create them, unless create_dest_dirs is false.
-        destination = "/etc/grafana/custom.ini"
+        destination = "/etc/grafana/grafana.ini"
 
         # This options tells Consul Template to create the parent directories of the
         # destination path if they do not exist. The default value is true.
@@ -503,7 +503,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl reload grafana-server"
+        command = "systemctl restart grafana-server"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.
@@ -647,7 +647,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl reload grafana-server"
+        command = "systemctl restart grafana-server"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.

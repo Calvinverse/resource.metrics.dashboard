@@ -509,7 +509,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # This is the destination path on disk where the source template will render.
       # If the parent directories do not exist, Consul Template will attempt to
       # create them, unless create_dest_dirs is false.
-      destination = "#{grafana_config_directory}/custom.ini"
+      destination = "#{grafana_config_directory}/grafana.ini"
 
       # This options tells Consul Template to create the parent directories of the
       # destination path if they do not exist. The default value is true.
@@ -519,7 +519,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "systemctl reload #{grafana_service}"
+      command = "systemctl restart #{grafana_service}"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.
@@ -664,7 +664,7 @@ file "#{consul_template_config_path}/grafana_ldap.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "systemctl reload #{grafana_service}"
+      command = "systemctl restart #{grafana_service}"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.

@@ -5,7 +5,7 @@ Describe 'The firewall' {
         It 'should return a status' {
             $ufwOutput | Should Not Be $null
             $ufwOutput.GetType().FullName | Should Be 'System.Object[]'
-            $ufwOutput.Length | Should Be 39
+            $ufwOutput.Length | Should Be 29
         }
 
         It 'should be enabled' {

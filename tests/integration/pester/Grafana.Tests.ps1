@@ -50,12 +50,14 @@ UMask=0027
 
 [Install]
 WantedBy=multi-user.target
-
 '@
-        $serviceFileContent = Get-Content $serviceConfigurationPath | Out-String
+        # Because the grafana install adds some random spaces to the end of a line we have to trim them ... doh
+        # Additionally the file doesn't end with a new line so we add one because it's not that easy to not have one
+        # in our expected content bit.
+        $serviceFileContent = Get-Content $serviceConfigurationPath | Foreach-Object { $_.TrimEnd() } | Out-String
         $systemctlOutput = & systemctl status grafana-server
         It 'with a systemd service' {
-            $serviceFileContent | Should Be ($expectedContent -replace "`r", "")
+            $($serviceFileContent + "`n") | Should Be ($expectedContent -replace "`r", "")
 
             $systemctlOutput | Should Not Be $null
             $systemctlOutput.GetType().FullName | Should Be 'System.Object[]'
@@ -76,7 +78,7 @@ WantedBy=multi-user.target
     Context 'can be contacted' {
         try
         {
-            $response = Invoke-WebRequest -Uri "http://localhost:3000/api/ping" -Headers $headers -UseBasicParsing
+            $response = Invoke-WebRequest -Uri "http://localhost:3000/dashboards/metrics/api/ping" -Headers $headers -UseBasicParsing
         }
         catch
         {
@@ -85,7 +87,7 @@ WantedBy=multi-user.target
         }
 
         It 'responds to HTTP calls' {
-            $response.StatusCode | Should Be 204
+            $response.StatusCode | Should Be 200
         }
     }
 }

@@ -418,7 +418,7 @@ describe 'resource_metrics_dashboard::grafana' do
       # Send internal metrics to Graphite
       [metrics.graphite]
       # Enable by setting the address setting (ex localhost:2003)
-      address = tcp://127.0.0.1:2003
+      address = 127.0.0.1:2003
       ;prefix = prod.grafana.%(instance_name)s.
 
       #################################### Distributed tracing ############

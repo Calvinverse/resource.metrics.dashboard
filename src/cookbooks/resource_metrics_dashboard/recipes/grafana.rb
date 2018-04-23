@@ -434,7 +434,7 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Send internal metrics to Graphite
     [metrics.graphite]
     # Enable by setting the address setting (ex localhost:2003)
-    address = tcp://#{telegraf_graphite_host}:#{telegraf_graphite_port}
+    address = #{telegraf_graphite_host}:#{telegraf_graphite_port}
     ;prefix = prod.grafana.%(instance_name)s.
 
     #################################### Distributed tracing ############

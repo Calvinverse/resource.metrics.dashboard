@@ -578,10 +578,10 @@ describe 'resource_metrics_dashboard::grafana' do
 
       # Search user bind password
       # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
-      bind_password = {{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}"{{ .Data.password }}"{{ end }}{{ end }})
+      bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}"{{ .Data.password }}"{{ end }}{{ end }}"""
 
       # User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
-      search_filter = "{{ key "config/environment/directory/filter/users/getuser" }}"
+      search_filter = "(sAMAccountName=%s)"
 
       # An array of base dns to search through
       search_base_dns = ["{{ key "config/environment/directory/query/lookupbase" }}"]
@@ -601,7 +601,7 @@ describe 'resource_metrics_dashboard::grafana' do
       surname = "sn"
       username = "cn"
       member_of = "memberOf"
-      email =  "email"
+      email =  "mail"
 
       # Map ldap groups to grafana org roles
       [[servers.group_mappings]]

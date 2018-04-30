@@ -51,13 +51,15 @@ UMask=0027
 [Install]
 WantedBy=multi-user.target
 '@
+
         # Because the grafana install adds some random spaces to the end of a line we have to trim them ... doh
         # Additionally the file doesn't end with a new line so we add one because it's not that easy to not have one
         # in our expected content bit.
-        $serviceFileContent = Get-Content $serviceConfigurationPath | Foreach-Object { $_.TrimEnd() } | Out-String
+        $expectedContent = $expectedContent.TrimEnd()
+        $serviceFileContent = (Get-Content $serviceConfigurationPath | Foreach-Object { $_.TrimEnd() } | Out-String).TrimEnd()
         $systemctlOutput = & systemctl status grafana-server
         It 'with a systemd service' {
-            $($serviceFileContent + "`n") | Should Be ($expectedContent -replace "`r", "")
+            $($serviceFileContent) | Should Be ($expectedContent -replace "`r", "")
 
             $systemctlOutput | Should Not Be $null
             $systemctlOutput.GetType().FullName | Should Be 'System.Object[]'

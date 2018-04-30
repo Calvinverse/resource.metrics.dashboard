@@ -1,0 +1,4 @@
+berks/
+build/
+packages/
+src/cookbooks/resource_metrics_dashboard/Gemfile.lock

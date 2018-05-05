@@ -41,6 +41,35 @@ describe 'resource_metrics_dashboard::grafana' do
         owner: 'grafana'
       )
     end
+
+    it 'creates the dashboards files directory at /etc/grafana/dashboards' do
+      expect(chef_run).to create_directory('/etc/grafana/dashboards').with(
+        group: 'grafana',
+        mode: '775',
+        owner: 'grafana'
+      )
+    end
+  end
+
+  context 'configures the default provisioning files' do
+    let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
+
+    grafana_default_dashboard_provisioning_content = <<~YAML
+      apiVersion: 1
+
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: true
+        options:
+          path: /etc/grafana/dashboards
+    YAML
+    it 'creates the /etc/grafana/provisioning/dashboards/default.yaml' do
+      expect(chef_run).to create_file('/etc/grafana/provisioning/dashboards/default.yaml')
+        .with_content(grafana_default_dashboard_provisioning_content)
+    end
   end
 
   context 'configures the firewall for Grafana' do
@@ -786,14 +815,10 @@ describe 'resource_metrics_dashboard::grafana' do
       #!/bin/sh
 
       {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
-      cat <<EOT > /etc/grafana/provisioning/dashboards/{{ .Key }}.yaml
+      cat <<EOT > /etc/grafana/dashboards/{{ .Key }}.json
       {{ .Value }}
       EOT
       {{ end }}
-
-      if ( ! (systemctl is-active --quiet grafana-server) ); then
-        systemctl restart grafana-server
-      fi
     CONF
     it 'creates grafana dashboards provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_dashboards.ctmpl')

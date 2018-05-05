@@ -44,6 +44,15 @@ directory grafana_provisioning_dashboards_directory do
   recursive true
 end
 
+grafana_provisioning_dashboards_files_directory = node['grafana']['dashboards_dir']
+directory grafana_provisioning_dashboards_files_directory do
+  action :create
+  group node['grafana']['group']
+  mode '775'
+  owner node['grafana']['user']
+  recursive true
+end
+
 #
 # ALLOW GRAFANA THROUGH THE FIREWALL
 #
@@ -54,6 +63,26 @@ firewall_rule 'grafana-http' do
   description 'Allow Grafana HTTP traffic'
   dest_port grafana_http_port
   direction :in
+end
+
+#
+# CONFIGURATION
+#
+
+file "#{grafana_provisioning_dashboards_directory}/default.yaml" do
+  action :create
+  content <<~YAML
+    apiVersion: 1
+
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      options:
+        path: #{grafana_provisioning_dashboards_files_directory}
+  YAML
 end
 
 #
@@ -806,14 +835,10 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
     #!/bin/sh
 
     {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
-    cat <<EOT > #{grafana_provisioning_dashboards_directory}/{{ .Key }}.yaml
+    cat <<EOT > #{grafana_provisioning_dashboards_files_directory}/{{ .Key }}.json
     {{ .Value }}
     EOT
     {{ end }}
-
-    if ( ! (systemctl is-active --quiet #{grafana_service}) ); then
-      systemctl restart #{grafana_service}
-    fi
   CONF
   mode '755'
 end

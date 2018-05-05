@@ -607,7 +607,7 @@ describe 'resource_metrics_dashboard::grafana' do
 
       # Search user bind password
       # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
-      bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}"{{ .Data.password }}"{{ end }}{{ end }}"""
+      bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}{{ .Data.password }}{{ end }}{{ end }}"""
 
       # User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
       search_filter = "(sAMAccountName=%s)"

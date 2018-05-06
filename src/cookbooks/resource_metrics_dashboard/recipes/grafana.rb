@@ -66,26 +66,6 @@ firewall_rule 'grafana-http' do
 end
 
 #
-# CONFIGURATION
-#
-
-file "#{grafana_provisioning_dashboards_directory}/default.yaml" do
-  action :create
-  content <<~YAML
-    apiVersion: 1
-
-    providers:
-    - name: 'default'
-      orgId: 1
-      folder: ''
-      type: file
-      disableDeletion: true
-      options:
-        path: #{grafana_provisioning_dashboards_files_directory}
-  YAML
-end
-
-#
 # CONSUL FILES
 #
 
@@ -834,11 +814,35 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
   content <<~CONF
     #!/bin/sh
 
-    {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
-    cat <<EOT > #{grafana_provisioning_dashboards_files_directory}/{{ .Key }}.json
+    cat <<EOT > #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    apiVersion: 1
+
+    providers:
+    EOT
+
+    {{ range $key, $pairs := tree "config/services/dashboards/metrics/provisioning/dashboards" | byKey }}
+
+    cat <<EOT >> #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    - name: '{{ $key }}'
+      orgId: 1
+      folder: '{{ $key }}'
+      type: file
+      disableDeletion: false
+      options:
+        path: #{grafana_provisioning_dashboards_files_directory}/{{ $key }}
+    EOT
+
+    mkdir -p #{grafana_provisioning_dashboards_files_directory}/{{ $key }}
+
+    {{ range $pair := $pairs }}
+    cat <<EOT > #{grafana_provisioning_dashboards_files_directory}/{{ $key }}/{{ .Key }}.json
     {{ .Value }}
     EOT
-    {{ end }}
+    {{ end }}{{ end }}
+
+    if ( ! (systemctl is-active --quiet #{grafana_service}) ); then
+      systemctl restart #{grafana_service}
+    fi
   CONF
   mode '755'
 end

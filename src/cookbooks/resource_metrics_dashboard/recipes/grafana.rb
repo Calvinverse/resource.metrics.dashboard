@@ -44,6 +44,15 @@ directory grafana_provisioning_dashboards_directory do
   recursive true
 end
 
+grafana_provisioning_dashboards_files_directory = node['grafana']['dashboards_dir']
+directory grafana_provisioning_dashboards_files_directory do
+  action :create
+  group node['grafana']['group']
+  mode '775'
+  owner node['grafana']['user']
+  recursive true
+end
+
 #
 # ALLOW GRAFANA THROUGH THE FIREWALL
 #
@@ -595,7 +604,7 @@ file "#{consul_template_template_path}/#{grafana_ldap_template_file}" do
 
     # Search user bind password
     # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
-    bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}"{{ .Data.password }}"{{ end }}{{ end }}"""
+    bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}{{ .Data.password }}{{ end }}{{ end }}"""
 
     # User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
     search_filter = "(sAMAccountName=%s)"
@@ -805,15 +814,33 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
   content <<~CONF
     #!/bin/sh
 
-    {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
-    cat <<EOT > #{grafana_provisioning_dashboards_directory}/{{ .Key }}.yaml
+    cat <<'EOT' > #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    apiVersion: 1
+
+    providers:
+    EOT
+
+    {{ range $key, $pairs := tree "config/services/dashboards/metrics/provisioning/dashboards" | byKey }}
+
+    cat <<'EOT' >> #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    - name: '{{ $key }}'
+      orgId: 1
+      folder: '{{ $key }}'
+      type: file
+      disableDeletion: false
+      options:
+        path: #{grafana_provisioning_dashboards_files_directory}/{{ $key }}
+    EOT
+
+    mkdir -p #{grafana_provisioning_dashboards_files_directory}/{{ $key }}
+
+    {{ range $pair := $pairs }}
+    cat <<'EOT' > #{grafana_provisioning_dashboards_files_directory}/{{ $key }}/{{ .Key }}.json
     {{ .Value }}
     EOT
-    {{ end }}
+    {{ end }}{{ end }}
 
-    if ( ! (systemctl is-active --quiet #{grafana_service}) ); then
-      systemctl restart #{grafana_service}
-    fi
+    systemctl restart #{grafana_service}
   CONF
   mode '755'
 end

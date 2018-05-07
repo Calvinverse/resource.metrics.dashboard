@@ -36,6 +36,7 @@ default['grafana']['port']['http'] = 3000
 default['grafana']['proxy_path'] = 'dashboards/metrics'
 
 default['grafana']['provisioning_dir'] = '/etc/grafana/provisioning'
+default['grafana']['dashboards_dir'] = '/etc/grafana/dashboards'
 
 default['grafana']['consul_template']['ini'] = 'grafana_custom_ini.ctmpl'
 default['grafana']['consul_template']['ldap'] = 'grafana_ldap.ctmpl'

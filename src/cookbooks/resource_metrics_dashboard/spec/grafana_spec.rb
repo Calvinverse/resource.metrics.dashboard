@@ -41,6 +41,14 @@ describe 'resource_metrics_dashboard::grafana' do
         owner: 'grafana'
       )
     end
+
+    it 'creates the dashboards files directory at /etc/grafana/dashboards' do
+      expect(chef_run).to create_directory('/etc/grafana/dashboards').with(
+        group: 'grafana',
+        mode: '775',
+        owner: 'grafana'
+      )
+    end
   end
 
   context 'configures the firewall for Grafana' do
@@ -578,7 +586,7 @@ describe 'resource_metrics_dashboard::grafana' do
 
       # Search user bind password
       # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
-      bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}"{{ .Data.password }}"{{ end }}{{ end }}"""
+      bind_password = """{{ with secret "secret/environment/directory/users/bind" }}{{ if .Data.password }}{{ .Data.password }}{{ end }}{{ end }}"""
 
       # User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
       search_filter = "(sAMAccountName=%s)"
@@ -785,15 +793,33 @@ describe 'resource_metrics_dashboard::grafana' do
     grafana_provisioning_dashboards_script_template_content = <<~CONF
       #!/bin/sh
 
-      {{ range ls "config/services/dashboards/metrics/provisioning/dashboards" }}
-      cat <<EOT > /etc/grafana/provisioning/dashboards/{{ .Key }}.yaml
+      cat <<'EOT' > /etc/grafana/provisioning/dashboards/dashboards.yaml
+      apiVersion: 1
+
+      providers:
+      EOT
+
+      {{ range $key, $pairs := tree "config/services/dashboards/metrics/provisioning/dashboards" | byKey }}
+
+      cat <<'EOT' >> /etc/grafana/provisioning/dashboards/dashboards.yaml
+      - name: '{{ $key }}'
+        orgId: 1
+        folder: '{{ $key }}'
+        type: file
+        disableDeletion: false
+        options:
+          path: /etc/grafana/dashboards/{{ $key }}
+      EOT
+
+      mkdir -p /etc/grafana/dashboards/{{ $key }}
+
+      {{ range $pair := $pairs }}
+      cat <<'EOT' > /etc/grafana/dashboards/{{ $key }}/{{ .Key }}.json
       {{ .Value }}
       EOT
-      {{ end }}
+      {{ end }}{{ end }}
 
-      if ( ! (systemctl is-active --quiet grafana-server) ); then
-        systemctl restart grafana-server
-      fi
+      systemctl restart grafana-server
     CONF
     it 'creates grafana dashboards provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_dashboards.ctmpl')

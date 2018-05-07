@@ -814,7 +814,7 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
   content <<~CONF
     #!/bin/sh
 
-    cat <<EOT > #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    cat <<'EOT' > #{grafana_provisioning_dashboards_directory}/dashboards.yaml
     apiVersion: 1
 
     providers:
@@ -822,7 +822,7 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
 
     {{ range $key, $pairs := tree "config/services/dashboards/metrics/provisioning/dashboards" | byKey }}
 
-    cat <<EOT >> #{grafana_provisioning_dashboards_directory}/dashboards.yaml
+    cat <<'EOT' >> #{grafana_provisioning_dashboards_directory}/dashboards.yaml
     - name: '{{ $key }}'
       orgId: 1
       folder: '{{ $key }}'
@@ -835,14 +835,12 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
     mkdir -p #{grafana_provisioning_dashboards_files_directory}/{{ $key }}
 
     {{ range $pair := $pairs }}
-    cat <<EOT > #{grafana_provisioning_dashboards_files_directory}/{{ $key }}/{{ .Key }}.json
+    cat <<'EOT' > #{grafana_provisioning_dashboards_files_directory}/{{ $key }}/{{ .Key }}.json
     {{ .Value }}
     EOT
     {{ end }}{{ end }}
 
-    if ( ! (systemctl is-active --quiet #{grafana_service}) ); then
-      systemctl restart #{grafana_service}
-    fi
+    systemctl restart #{grafana_service}
   CONF
   mode '755'
 end

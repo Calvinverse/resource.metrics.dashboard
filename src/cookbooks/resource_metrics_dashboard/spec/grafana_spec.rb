@@ -793,7 +793,7 @@ describe 'resource_metrics_dashboard::grafana' do
     grafana_provisioning_dashboards_script_template_content = <<~CONF
       #!/bin/sh
 
-      cat <<EOT > /etc/grafana/provisioning/dashboards/dashboards.yaml
+      cat <<'EOT' > /etc/grafana/provisioning/dashboards/dashboards.yaml
       apiVersion: 1
 
       providers:
@@ -801,7 +801,7 @@ describe 'resource_metrics_dashboard::grafana' do
 
       {{ range $key, $pairs := tree "config/services/dashboards/metrics/provisioning/dashboards" | byKey }}
 
-      cat <<EOT >> /etc/grafana/provisioning/dashboards/dashboards.yaml
+      cat <<'EOT' >> /etc/grafana/provisioning/dashboards/dashboards.yaml
       - name: '{{ $key }}'
         orgId: 1
         folder: '{{ $key }}'
@@ -814,14 +814,12 @@ describe 'resource_metrics_dashboard::grafana' do
       mkdir -p /etc/grafana/dashboards/{{ $key }}
 
       {{ range $pair := $pairs }}
-      cat <<EOT > /etc/grafana/dashboards/{{ $key }}/{{ .Key }}.json
+      cat <<'EOT' > /etc/grafana/dashboards/{{ $key }}/{{ .Key }}.json
       {{ .Value }}
       EOT
       {{ end }}{{ end }}
 
-      if ( ! (systemctl is-active --quiet grafana-server) ); then
-        systemctl restart grafana-server
-      fi
+      systemctl restart grafana-server
     CONF
     it 'creates grafana dashboards provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_dashboards.ctmpl')

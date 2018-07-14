@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe 'resource_metrics_dashboard::grafana' do
   before do
-    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.0.4").and_return(false)
+    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.2.1").and_return(false)
   end
 
   context 'installs Grafana' do

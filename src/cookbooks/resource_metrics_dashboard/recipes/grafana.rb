@@ -86,7 +86,7 @@ file '/etc/consul/conf.d/grafana-http.json' do
               "timeout": "5s"
             }
           ],
-          "enableTagOverride": false,
+          "enable_tag_override": false,
           "id": "grafana_http",
           "name": "metrics",
           "port": #{grafana_http_port},

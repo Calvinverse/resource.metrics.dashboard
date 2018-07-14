@@ -80,7 +80,7 @@ describe 'resource_metrics_dashboard::grafana' do
                 "timeout": "5s"
               }
             ],
-            "enableTagOverride": false,
+            "enable_tag_override": false,
             "id": "grafana_http",
             "name": "metrics",
             "port": 3000,

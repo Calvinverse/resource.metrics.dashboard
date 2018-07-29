@@ -21,7 +21,7 @@ grafana_provisioning_directory = node['grafana']['provisioning_dir']
 directory grafana_provisioning_directory do
   action :create
   group node['grafana']['group']
-  mode '775'
+  mode '750'
   owner node['grafana']['user']
   recursive true
 end
@@ -30,7 +30,7 @@ grafana_provisioning_datasources_directory = "#{grafana_provisioning_directory}/
 directory grafana_provisioning_datasources_directory do
   action :create
   group node['grafana']['group']
-  mode '775'
+  mode '750'
   owner node['grafana']['user']
   recursive true
 end
@@ -39,7 +39,7 @@ grafana_provisioning_dashboards_directory = "#{grafana_provisioning_directory}/d
 directory grafana_provisioning_dashboards_directory do
   action :create
   group node['grafana']['group']
-  mode '775'
+  mode '750'
   owner node['grafana']['user']
   recursive true
 end
@@ -48,7 +48,7 @@ grafana_provisioning_dashboards_files_directory = node['grafana']['dashboards_di
 directory grafana_provisioning_dashboards_files_directory do
   action :create
   group node['grafana']['group']
-  mode '775'
+  mode '750'
   owner node['grafana']['user']
   recursive true
 end
@@ -500,7 +500,9 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     [external_image_storage.local]
     # does not require any configuration
   CONF
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
@@ -528,7 +530,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "systemctl restart #{grafana_service}"
+      command = "chown #{node['grafana']['user']}:#{node['grafana']['group']} #{grafana_config_directory}/grafana.ini && systemctl restart #{grafana_service}"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.
@@ -544,7 +546,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # unspecified, Consul Template will attempt to match the permissions of the
       # file that already exists at the destination path. If no file exists at that
       # path, the permissions are 0644.
-      perms = 0755
+      perms = 0550
 
       # This option backs up the previously rendered template at the destination
       # path before writing a new one. It keeps exactly one backup. This option is
@@ -570,7 +572,9 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       }
     }
   HCL
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 grafana_ldap_template_file = node['grafana']['consul_template']['ldap']
@@ -645,7 +649,9 @@ file "#{consul_template_template_path}/#{grafana_ldap_template_file}" do
     group_dn = "*"
     org_role = "Viewer"
   CONF
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 file "#{consul_template_config_path}/grafana_ldap.hcl" do
@@ -673,7 +679,7 @@ file "#{consul_template_config_path}/grafana_ldap.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "systemctl restart #{grafana_service}"
+      command = "chown #{node['grafana']['user']}:#{node['grafana']['group']} #{grafana_ldap_config_file} && systemctl restart #{grafana_service}"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.
@@ -689,7 +695,7 @@ file "#{consul_template_config_path}/grafana_ldap.hcl" do
       # unspecified, Consul Template will attempt to match the permissions of the
       # file that already exists at the destination path. If no file exists at that
       # path, the permissions are 0644.
-      perms = 0755
+      perms = 0550
 
       # This option backs up the previously rendered template at the destination
       # path before writing a new one. It keeps exactly one backup. This option is
@@ -715,7 +721,9 @@ file "#{consul_template_config_path}/grafana_ldap.hcl" do
       }
     }
   HCL
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 grafana_provisioning_datasources_script_template_file = node['grafana']['consul_template']['provisioning_datasources_script']
@@ -734,7 +742,9 @@ file "#{consul_template_template_path}/#{grafana_provisioning_datasources_script
       systemctl restart #{grafana_service}
     fi
   CONF
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 grafana_provisioning_datasources_script = '/tmp/grafana_datasources.sh'
@@ -779,7 +789,7 @@ file "#{consul_template_config_path}/grafana_provisioning_datasources.hcl" do
       # unspecified, Consul Template will attempt to match the permissions of the
       # file that already exists at the destination path. If no file exists at that
       # path, the permissions are 0644.
-      perms = 0755
+      perms = 0550
 
       # This option backs up the previously rendered template at the destination
       # path before writing a new one. It keeps exactly one backup. This option is
@@ -805,7 +815,9 @@ file "#{consul_template_config_path}/grafana_provisioning_datasources.hcl" do
       }
     }
   HCL
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 grafana_provisioning_dashboards_script_template_file = node['grafana']['consul_template']['provisioning_dashboards_script']
@@ -842,7 +854,9 @@ file "#{consul_template_template_path}/#{grafana_provisioning_dashboards_script_
 
     systemctl restart #{grafana_service}
   CONF
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 grafana_provisioning_dashboards_script = '/tmp/grafana_dashboards.sh'
@@ -887,7 +901,7 @@ file "#{consul_template_config_path}/grafana_provisioning_dashboards.hcl" do
       # unspecified, Consul Template will attempt to match the permissions of the
       # file that already exists at the destination path. If no file exists at that
       # path, the permissions are 0644.
-      perms = 0755
+      perms = 0550
 
       # This option backs up the previously rendered template at the destination
       # path before writing a new one. It keeps exactly one backup. This option is
@@ -913,7 +927,9 @@ file "#{consul_template_config_path}/grafana_provisioning_dashboards.hcl" do
       }
     }
   HCL
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 telegraf_service = 'telegraf'
@@ -963,7 +979,9 @@ file "#{consul_template_template_path}/#{telegraf_grafana_inputs_template_file}"
       [inputs.socket_listener.tags]
         influxdb_database = "{{ keyOrDefault "config/services/metrics/databases/services" "services" }}"
   CONF
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end
 
 file "#{consul_template_config_path}/telegraf_grafana_inputs.hcl" do
@@ -991,7 +1009,7 @@ file "#{consul_template_config_path}/telegraf_grafana_inputs.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "systemctl reload #{telegraf_service}"
+      command = "chown #{node['telegraf']['service_user']}:#{node['telegraf']['service_group']} #{telegraf_config_directory}/inputs_grafana.conf && systemctl reload #{telegraf_service}"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.
@@ -1007,7 +1025,7 @@ file "#{consul_template_config_path}/telegraf_grafana_inputs.hcl" do
       # unspecified, Consul Template will attempt to match the permissions of the
       # file that already exists at the destination path. If no file exists at that
       # path, the permissions are 0644.
-      perms = 0755
+      perms = 0550
 
       # This option backs up the previously rendered template at the destination
       # path before writing a new one. It keeps exactly one backup. This option is
@@ -1033,5 +1051,7 @@ file "#{consul_template_config_path}/telegraf_grafana_inputs.hcl" do
       }
     }
   HCL
-  mode '755'
+  group 'root'
+  mode '0550'
+  owner 'root'
 end

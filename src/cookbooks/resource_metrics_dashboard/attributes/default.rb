@@ -27,8 +27,8 @@ default['firewall']['ipv6_enabled'] = false
 # INFLUXDB
 #
 
-default['grafana']['version'] = '5.2.1'
-default['grafana']['file']['checksum']['deb'] = '97722140d58365c80e8bfff091e07b84cd0f7f3de9b6601fd062cdf49660c4f3'
+default['grafana']['version'] = '5.2.4'
+default['grafana']['file']['checksum']['deb'] = 'e4fe9335c2e933d852ceb87848d32d99af4e351ac9a484d33ad907b43c1d3945'
 
 default['grafana']['webserver'] = '' # don't install the webserver
 

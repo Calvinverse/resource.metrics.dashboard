@@ -618,7 +618,7 @@ describe 'resource_metrics_dashboard::grafana' do
       [servers.attributes]
       name = "givenName"
       surname = "sn"
-      username = "cn"
+      username = "sAMAccountName"
       member_of = "distinguishedName"
       email =  "mail"
 

@@ -630,7 +630,7 @@ file "#{consul_template_template_path}/#{grafana_ldap_template_file}" do
     [servers.attributes]
     name = "givenName"
     surname = "sn"
-    username = "cn"
+    username = "sAMAccountName"
     member_of = "distinguishedName"
     email =  "mail"
 

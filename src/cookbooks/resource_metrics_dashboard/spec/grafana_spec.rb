@@ -609,7 +609,8 @@ describe 'resource_metrics_dashboard::grafana' do
       # in [servers.attributes] below.
 
       ## Group search filter, to retrieve the groups of which the user is a member (only set if memberOf attribute is not available)
-      # group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
+      group_search_filter = "(member:1.2.840.113556.1.4.1941:=%s)"
+      group_search_filter_user_attribute = "distinguishedName"
       ## An array of the base DNs to search through for groups. Typically uses ou=groups
       group_search_base_dns = ["{{ key "config/environment/directory/query/groups/lookupbase" }}"]
 
@@ -618,7 +619,7 @@ describe 'resource_metrics_dashboard::grafana' do
       name = "givenName"
       surname = "sn"
       username = "cn"
-      member_of = "memberOf"
+      member_of = "distinguishedName"
       email =  "mail"
 
       # Map ldap groups to grafana org roles

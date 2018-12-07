@@ -27,8 +27,8 @@ default['firewall']['ipv6_enabled'] = false
 # INFLUXDB
 #
 
-default['grafana']['version'] = '5.0.4'
-default['grafana']['file']['checksum']['deb'] = '994f305781a80648741288bc4c1376d81c17c5f367edb709cc413b0438eee1f5'
+default['grafana']['version'] = '5.2.4'
+default['grafana']['file']['checksum']['deb'] = 'e4fe9335c2e933d852ceb87848d32d99af4e351ac9a484d33ad907b43c1d3945'
 
 default['grafana']['webserver'] = '' # don't install the webserver
 
@@ -49,4 +49,6 @@ default['grafana']['telegraf']['consul_template_inputs_file'] = 'telegraf_grafan
 # TELEGRAF
 #
 
+default['telegraf']['service_user'] = 'telegraf'
+default['telegraf']['service_group'] = 'telegraf'
 default['telegraf']['config_directory'] = '/etc/telegraf/telegraf.d'

@@ -22,6 +22,12 @@ Describe 'On the system' {
         }
     }
 
+    Context 'the environment variables' {
+        It 'should have a variable indicating which services need a statsd sink' {
+            $env:STATSD_ENABLED_SERVICES | Should Be 'consul'
+        }
+    }
+
     Context 'system updates' {
         # split the output which should contain the names of the packages that have not been updated.
         # We allow the following list:

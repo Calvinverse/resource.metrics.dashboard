@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe 'resource_metrics_dashboard::grafana' do
   before do
-    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.0.4").and_return(false)
+    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.2.4").and_return(false)
   end
 
   context 'installs Grafana' do
@@ -21,7 +21,7 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates the provisioning directory at /etc/grafana/provisioning' do
       expect(chef_run).to create_directory('/etc/grafana/provisioning').with(
         group: 'grafana',
-        mode: '775',
+        mode: '750',
         owner: 'grafana'
       )
     end
@@ -29,7 +29,7 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates the datasources provisioning directory at /etc/grafana/provisioning/datasources' do
       expect(chef_run).to create_directory('/etc/grafana/provisioning/datasources').with(
         group: 'grafana',
-        mode: '775',
+        mode: '750',
         owner: 'grafana'
       )
     end
@@ -37,7 +37,7 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates the dashboards provisioning directory at /etc/grafana/provisioning/dashboards' do
       expect(chef_run).to create_directory('/etc/grafana/provisioning/dashboards').with(
         group: 'grafana',
-        mode: '775',
+        mode: '750',
         owner: 'grafana'
       )
     end
@@ -45,7 +45,7 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates the dashboards files directory at /etc/grafana/dashboards' do
       expect(chef_run).to create_directory('/etc/grafana/dashboards').with(
         group: 'grafana',
-        mode: '775',
+        mode: '750',
         owner: 'grafana'
       )
     end
@@ -80,7 +80,7 @@ describe 'resource_metrics_dashboard::grafana' do
                 "timeout": "5s"
               }
             ],
-            "enableTagOverride": false,
+            "enable_tag_override": false,
             "id": "grafana_http",
             "name": "metrics",
             "port": 3000,
@@ -486,6 +486,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana ini template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_custom_ini.ctmpl')
         .with_content(grafana_ini_template_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     consul_template_grafana_ini_inputs_content = <<~CONF
@@ -511,7 +516,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl restart grafana-server"
+        command = "/bin/bash -c 'chown grafana:grafana /etc/grafana/grafana.ini && systemctl restart grafana-server'"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.
@@ -527,7 +532,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # unspecified, Consul Template will attempt to match the permissions of the
         # file that already exists at the destination path. If no file exists at that
         # path, the permissions are 0644.
-        perms = 0755
+        perms = 0550
 
         # This option backs up the previously rendered template at the destination
         # path before writing a new one. It keeps exactly one backup. This option is
@@ -556,6 +561,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates telegraf_grafana_inputs.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_custom_ini.hcl')
         .with_content(consul_template_grafana_ini_inputs_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     grafana_ldap_template_content = <<~CONF
@@ -599,7 +609,8 @@ describe 'resource_metrics_dashboard::grafana' do
       # in [servers.attributes] below.
 
       ## Group search filter, to retrieve the groups of which the user is a member (only set if memberOf attribute is not available)
-      # group_search_filter = "(&(objectClass=posixGroup)(memberUid=%s))"
+      group_search_filter = "(member:1.2.840.113556.1.4.1941:=%s)"
+      group_search_filter_user_attribute = "distinguishedName"
       ## An array of the base DNs to search through for groups. Typically uses ou=groups
       group_search_base_dns = ["{{ key "config/environment/directory/query/groups/lookupbase" }}"]
 
@@ -607,8 +618,8 @@ describe 'resource_metrics_dashboard::grafana' do
       [servers.attributes]
       name = "givenName"
       surname = "sn"
-      username = "cn"
-      member_of = "memberOf"
+      username = "sAMAccountName"
+      member_of = "distinguishedName"
       email =  "mail"
 
       # Map ldap groups to grafana org roles
@@ -630,6 +641,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana ldap template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_ldap.ctmpl')
         .with_content(grafana_ldap_template_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     consul_template_grafana_ldap_inputs_content = <<~CONF
@@ -655,7 +671,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl restart grafana-server"
+        command = "/bin/bash -c 'chown grafana:grafana /etc/grafana/ldap.toml && systemctl restart grafana-server'"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.
@@ -671,7 +687,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # unspecified, Consul Template will attempt to match the permissions of the
         # file that already exists at the destination path. If no file exists at that
         # path, the permissions are 0644.
-        perms = 0755
+        perms = 0550
 
         # This option backs up the previously rendered template at the destination
         # path before writing a new one. It keeps exactly one backup. This option is
@@ -700,6 +716,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana_ldap.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_ldap.hcl')
         .with_content(consul_template_grafana_ldap_inputs_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     grafana_provisioning_datasources_script_template_content = <<~CONF
@@ -718,6 +739,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana datasources provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_datasources.ctmpl')
         .with_content(grafana_provisioning_datasources_script_template_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     consul_template_grafana_provisioning_datasources_inputs_content = <<~CONF
@@ -759,7 +785,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # unspecified, Consul Template will attempt to match the permissions of the
         # file that already exists at the destination path. If no file exists at that
         # path, the permissions are 0644.
-        perms = 0755
+        perms = 0550
 
         # This option backs up the previously rendered template at the destination
         # path before writing a new one. It keeps exactly one backup. This option is
@@ -788,6 +814,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana_provisioning_datasources.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_provisioning_datasources.hcl')
         .with_content(consul_template_grafana_provisioning_datasources_inputs_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     grafana_provisioning_dashboards_script_template_content = <<~CONF
@@ -824,6 +855,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana dashboards provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_dashboards.ctmpl')
         .with_content(grafana_provisioning_dashboards_script_template_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     consul_template_grafana_provisioning_dashboards_inputs_content = <<~CONF
@@ -865,7 +901,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # unspecified, Consul Template will attempt to match the permissions of the
         # file that already exists at the destination path. If no file exists at that
         # path, the permissions are 0644.
-        perms = 0755
+        perms = 0550
 
         # This option backs up the previously rendered template at the destination
         # path before writing a new one. It keeps exactly one backup. This option is
@@ -894,6 +930,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates grafana_provisioning_dashboards.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/grafana_provisioning_dashboards.hcl')
         .with_content(consul_template_grafana_provisioning_dashboards_inputs_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
   end
 
@@ -945,6 +986,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates telegraf grafana input template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/telegraf_grafana_inputs.ctmpl')
         .with_content(telegraf_grafana_inputs_template_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
 
     consul_template_telegraf_grafana_inputs_content = <<~CONF
@@ -970,7 +1016,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # command will only run if the resulting template changes. The command must
         # return within 30s (configurable), and it must have a successful exit code.
         # Consul Template is not a replacement for a process monitor or init system.
-        command = "systemctl reload telegraf"
+        command = "/bin/bash -c 'chown telegraf:telegraf /etc/telegraf/telegraf.d/inputs_grafana.conf && systemctl restart telegraf'"
 
         # This is the maximum amount of time to wait for the optional command to
         # return. Default is 30s.
@@ -986,7 +1032,7 @@ describe 'resource_metrics_dashboard::grafana' do
         # unspecified, Consul Template will attempt to match the permissions of the
         # file that already exists at the destination path. If no file exists at that
         # path, the permissions are 0644.
-        perms = 0755
+        perms = 0550
 
         # This option backs up the previously rendered template at the destination
         # path before writing a new one. It keeps exactly one backup. This option is
@@ -1015,6 +1061,11 @@ describe 'resource_metrics_dashboard::grafana' do
     it 'creates telegraf_grafana_inputs.hcl in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/conf/telegraf_grafana_inputs.hcl')
         .with_content(consul_template_telegraf_grafana_inputs_content)
+        .with(
+          group: 'root',
+          owner: 'root',
+          mode: '0550'
+        )
     end
   end
 end

@@ -499,6 +499,11 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
 
     [external_image_storage.local]
     # does not require any configuration
+
+    #################################### Explore ##########################
+    [explore]
+    # Enable the Explore section
+    enabled = true
   CONF
   group 'root'
   mode '0550'
@@ -739,9 +744,7 @@ file "#{consul_template_template_path}/#{grafana_provisioning_datasources_script
     EOT
     {{ end }}
 
-    if ( ! (systemctl is-active --quiet #{grafana_service}) ); then
-      systemctl restart #{grafana_service}
-    fi
+    systemctl restart #{grafana_service}
   CONF
   group 'root'
   mode '0550'

@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe 'resource_metrics_dashboard::grafana' do
   before do
-    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.2.4").and_return(false)
+    stub_command("dpkg -l | grep '^ii' | grep grafana | grep 5.4.2").and_return(false)
   end
 
   context 'installs Grafana' do
@@ -482,6 +482,11 @@ describe 'resource_metrics_dashboard::grafana' do
 
       [external_image_storage.local]
       # does not require any configuration
+
+      #################################### Explore ##########################
+      [explore]
+      # Enable the Explore section
+      enabled = true
     CONF
     it 'creates grafana ini template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_custom_ini.ctmpl')
@@ -732,9 +737,7 @@ describe 'resource_metrics_dashboard::grafana' do
       EOT
       {{ end }}
 
-      if ( ! (systemctl is-active --quiet grafana-server) ); then
-        systemctl restart grafana-server
-      fi
+      systemctl restart grafana-server
     CONF
     it 'creates grafana datasources provisioning script template file in the consul-template template directory' do
       expect(chef_run).to create_file('/etc/consul-template.d/templates/grafana_datasources.ctmpl')

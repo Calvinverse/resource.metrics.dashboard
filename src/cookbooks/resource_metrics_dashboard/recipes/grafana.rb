@@ -7,50 +7,137 @@
 # Copyright 2018, P. van der Velde
 #
 
+group node['grafana']['service_group'] do
+  action :create
+  system true
+end
+
+user node['grafana']['service_user'] do
+  action :create
+  gid node['grafana']['service_group']
+  shell '/bin/false'
+  system true
+end
+
 #
 # INSTALL GRAFANA
 #
 
-include_recipe 'grafana::default'
+grafana_install 'grafana' do
+  action :install
+  version node['grafana']['version']
+end
 
 #
 # DIRECTORIES
 #
 
+grafana_config_directory = node['grafana']['path']['config']
+
 grafana_provisioning_directory = node['grafana']['provisioning_dir']
 directory grafana_provisioning_directory do
   action :create
-  group node['grafana']['group']
+  group node['grafana']['service_group']
   mode '750'
-  owner node['grafana']['user']
+  owner node['grafana']['service_user']
   recursive true
 end
 
 grafana_provisioning_datasources_directory = "#{grafana_provisioning_directory}/datasources"
 directory grafana_provisioning_datasources_directory do
   action :create
-  group node['grafana']['group']
+  group node['grafana']['service_group']
   mode '750'
-  owner node['grafana']['user']
+  owner node['grafana']['service_user']
   recursive true
 end
 
 grafana_provisioning_dashboards_directory = "#{grafana_provisioning_directory}/dashboards"
 directory grafana_provisioning_dashboards_directory do
   action :create
-  group node['grafana']['group']
+  group node['grafana']['service_group']
   mode '750'
-  owner node['grafana']['user']
+  owner node['grafana']['service_user']
   recursive true
 end
 
 grafana_provisioning_dashboards_files_directory = node['grafana']['dashboards_dir']
 directory grafana_provisioning_dashboards_files_directory do
   action :create
-  group node['grafana']['group']
+  group node['grafana']['service_group']
   mode '750'
-  owner node['grafana']['user']
+  owner node['grafana']['service_user']
   recursive true
+end
+
+#
+# SERVICE
+#
+
+grafana_config_file = "#{grafana_config_directory}/grafana.ini"
+
+pid_dir = '/tmp'
+
+grafana_environment_directory = '/etc/default'
+grafana_environment_file = "#{grafana_environment_directory}/grafana-server"
+file grafana_environment_file do
+  content <<~TXT
+    GRAFANA_USER=#{node['grafana']['service_user']}
+    GRAFANA_GROUP=#{node['grafana']['service_group']}
+    GRAFANA_HOME=/usr/share/grafana
+    LOG_DIR=/var/log/grafana
+    DATA_DIR=/var/lib/grafana
+    PLUGINS_DIR=/var/lib/grafana/plugins
+    MAX_OPEN_FILES=10000
+    CONF_DIR=#{grafana_config_directory}
+    CONF_FILE=#{grafana_config_file}
+    PID_FILE_DIR=#{pid_dir}
+    RESTART_ON_UPGRADE=false
+  TXT
+end
+
+grafana_service = 'grafana-server'
+grafana_install_path = '/usr/sbin/grafana-server'
+
+grafana_pid_file = "#{pid_dir}/grafana-server.pid"
+systemd_service grafana_service do
+  action :create
+  install do
+    wanted_by %w[multi-user.target]
+  end
+  service do
+    environment_file grafana_environment_file
+    exec_start "#{grafana_install_path} --config=#{grafana_config_file} --pidfile=#{grafana_pid_file} --packaging=deb"
+    group node['grafana']['service_group']
+    pid_file grafana_pid_file
+    restart 'on-failure'
+    user node['grafana']['service_user']
+    working_directory '/usr/share/grafana'
+  end
+  unit do
+    after %w[network-online.target]
+    description 'Grafana instance'
+    documentation 'http://docs.grafana.org'
+    wants %w[network-online.target]
+  end
+end
+
+service grafana_service do
+  action :enable
+end
+
+#
+# DEFAULT CONFIGURATION
+#
+
+# Create a default configuration file for grafana. To be overwritten when consul-template
+# is authenticated
+grafana_config 'grafana' do
+  conf_directory grafana_config_directory
+  env_directory grafana_environment_directory
+  group node['grafana']['service_group']
+  owner node['grafana']['service_user']
+  restart_on_upgrade true
 end
 
 #
@@ -107,12 +194,9 @@ end
 consul_template_config_path = node['consul_template']['config_path']
 consul_template_template_path = node['consul_template']['template_path']
 
-grafana_service = 'grafana-server'
-
 telegraf_graphite_host = '127.0.0.1'
 telegraf_graphite_port = '2003'
 
-grafana_config_directory = node['grafana']['conf_dir']
 grafana_ldap_config_file = "#{grafana_config_directory}/ldap.toml"
 
 grafana_ini_template_file = node['grafana']['consul_template']['ini']
@@ -135,6 +219,9 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Path to where grafana can store temp files, sessions, and the sqlite3 db (if that is used)
     ;data = /var/lib/grafana
 
+    # Temporary files in `data` directory older than given duration will be removed
+    ;temp_data_lifetime = 24h
+
     # Directory where grafana can store logs
     ;logs = /var/log/grafana
 
@@ -146,7 +233,7 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
 
     #################################### Server ####################################
     [server]
-    # Protocol (http, https, socket)
+    # Protocol (http, https, h2, socket)
     ;protocol = http
 
     # The ip address to bind to, empty will bind to all interfaces
@@ -166,6 +253,10 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # If you use reverse proxy and sub path specify full url (with sub path)
     root_url = %(protocol)s://%(domain)s:%(http_port)s/#{proxy_path}
 
+    # Serve Grafana from subpath specified in `root_url` setting. By default it
+    # is set to `false` for compatibility reasons.
+    serve_from_sub_path = true
+
     # Log web requests
     ;router_logging = false
 
@@ -173,7 +264,7 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     ;static_root_path = public
 
     # enable gzip
-    ;enable_gzip = false
+    enable_gzip = true
 
     # https certs & key file
     ;cert_file =
@@ -185,7 +276,7 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     #################################### Database ####################################
     [database]
     # You can configure the database connection by specifying type, host, name, user and password
-    # as seperate properties or as on string using the url propertie.
+    # as separate properties or as on string using the url properties.
 
     # Either "mysql", "postgres" or "sqlite3", it's your choice
     ;type = sqlite3
@@ -202,6 +293,11 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # For "postgres" only, either "disable", "require" or "verify-full"
     ;ssl_mode = disable
 
+    ;ca_cert_path =
+    ;client_key_path =
+    ;client_cert_path =
+    ;server_cert_name =
+
     # For "sqlite3" only, path relative to data_path setting
     ;path = grafana.db
 
@@ -215,29 +311,21 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     ;conn_max_lifetime = 14400
 
     # Set to true to log the sql calls and execution times.
-    log_queries =
+    ;log_queries =
 
-    #################################### Session ####################################
-    [session]
-    # Either "memory", "file", "redis", "mysql", "postgres", default is "file"
-    ;provider = file
+    # For "sqlite3" only. cache mode setting used for connecting to the database. (private, shared)
+    ;cache_mode = private
 
-    # Provider config options
-    # memory: not have any config yet
-    # file: session dir path, is relative to grafana data_path
-    # redis: config like redis server e.g. `addr=127.0.0.1:6379,pool_size=100,db=grafana`
-    # mysql: go-sql-driver/mysql dsn config string, e.g. `user:password@tcp(127.0.0.1:3306)/database_name`
-    # postgres: user=a password=b host=localhost port=5432 dbname=c sslmode=disable
-    ;provider_config = sessions
+    #################################### Cache server #############################
+    [remote_cache]
+    # Either "redis", "memcached" or "database" default is "database"
+    ;type = database
 
-    # Session cookie name
-    ;cookie_name = grafana_sess
-
-    # If you use session in https only, default is false
-    ;cookie_secure = false
-
-    # Session life time, default is 86400
-    ;session_life_time = 86400
+    # cache connectionstring options
+    # database: will use Grafana primary database.
+    # redis: config like redis server e.g. `addr=127.0.0.1:6379,pool_size=100,db=0,ssl=false`. Only addr is required. ssl may be 'true', 'false', or 'insecure'.
+    # memcache: 127.0.0.1:11211
+    ;connstr =
 
     #################################### Data proxy ###########################
     [dataproxy]
@@ -245,6 +333,11 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # This enables data proxy logging, default is false
     ;logging = false
 
+    # How long the data proxy should wait before timing out default is 30 (seconds)
+    ;timeout = 30
+
+    # If enabled and user is not anonymous, data proxy will add X-Grafana-User header with username into the request, default is false.
+    ;send_user_header = false
 
     #################################### Analytics ####################################
     [analytics]
@@ -264,8 +357,14 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Google Analytics universal tracking code, only enabled if you specify an id here
     ;google_analytics_ua_id =
 
+    # Google Tag Manager ID, only enabled if you specify an id here
+    ;google_tag_manager_id =
+
     #################################### Security ####################################
     [security]
+    # disable creation of admin user on first start of grafana
+    disable_initial_admin_creation = true
+
     # default admin user, created on startup
     ;admin_user = admin
 
@@ -274,11 +373,6 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
 
     # used for signing
     ;secret_key = SW2YcwTIb9zpOOhoPsMm
-
-    # Auto-login remember days
-    ;login_remember_days = 7
-    ;cookie_username = grafana_user
-    ;cookie_remember_name = grafana_remember
 
     # disable gravatar profile images
     ;disable_gravatar = false
@@ -289,6 +383,39 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # disable protection against brute force login attempts
     ;disable_brute_force_login_protection = false
 
+    # set to true if you host Grafana behind HTTPS. default is false.
+    ;cookie_secure = false
+
+    # set cookie SameSite attribute. defaults to `lax`. can be set to "lax", "strict" and "none"
+    ;cookie_samesite = lax
+
+    # set to true if you want to allow browsers to render Grafana in a <frame>, <iframe>, <embed> or <object>. default is false.
+    ;allow_embedding = false
+
+    # Set to true if you want to enable http strict transport security (HSTS) response header.
+    # This is only sent when HTTPS is enabled in this configuration.
+    # HSTS tells browsers that the site should only be accessed using HTTPS.
+    # The default version will change to true in the next minor release, 6.3.
+    ;strict_transport_security = false
+
+    # Sets how long a browser should cache HSTS. Only applied if strict_transport_security is enabled.
+    ;strict_transport_security_max_age_seconds = 86400
+
+    # Set to true if to enable HSTS preloading option. Only applied if strict_transport_security is enabled.
+    ;strict_transport_security_preload = false
+
+    # Set to true if to enable the HSTS includeSubDomains option. Only applied if strict_transport_security is enabled.
+    ;strict_transport_security_subdomains = false
+
+    # Set to true to enable the X-Content-Type-Options response header.
+    # The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised
+    # in the Content-Type headers should not be changed and be followed. The default will change to true in the next minor release, 6.3.
+    ;x_content_type_options = false
+
+    # Set to true to enable the X-XSS-Protection header, which tells browsers to stop pages from loading
+    # when they detect reflected cross-site scripting (XSS) attacks. The default will change to true in the next minor release, 6.3.
+    ;x_xss_protection = false
+
     #################################### Snapshots ###########################
     [snapshots]
     # snapshot sharing options
@@ -296,13 +423,17 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     ;external_snapshot_url = https://snapshots-origin.raintank.io
     ;external_snapshot_name = Publish to snapshot.raintank.io
 
+    # Set to true to enable this Grafana instance act as an external snapshot server and allow unauthenticated requests for
+    # creating and deleting snapshots.
+    ;public_mode = false
+
     # remove expired snapshot
     ;snapshot_remove_expired = true
 
     #################################### Dashboards History ##################
     [dashboards]
     # Number dashboard versions to keep (per dashboard). Default: 20, Minimum: 1
-    ;versions_to_keep = 20
+    versions_to_keep = 1
 
     #################################### Users ###############################
     [users]
@@ -315,11 +446,18 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Set to true to automatically assign new users to the default organization (id 1)
     auto_assign_org = true
 
+    # Set this value to automatically add new users to the provided organization (if auto_assign_org above is set to true)
+    ;auto_assign_org_id = 1
+
     # Default role new users will be automatically assigned (if disabled above is set to true)
     auto_assign_org_role = Viewer
 
+    # Require email validation before sign up completes
+    ;verify_email_enabled = false
+
     # Background text for the user field on the login page
     ;login_hint = email or username
+    ;password_hint = password
 
     # Default UI theme ("dark" or "light")
     ;default_theme = dark
@@ -332,14 +470,39 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Viewers can edit/inspect dashboard settings in the browser. But not save the dashboard.
     ;viewers_can_edit = false
 
+    # Editors can administrate dashboard, folders and teams they create
+    ;editors_can_admin = false
+
     [auth]
+    # Login cookie name
+    ;login_cookie_name = grafana_session
+
+    # The lifetime (days) an authenticated user can be inactive before being required to login at next visit. Default is 7 days,
+    ;login_maximum_inactive_lifetime_days = 7
+
+    # The maximum lifetime (days) an authenticated user can be logged in since login time before being required to login. Default is 30 days.
+    ;login_maximum_lifetime_days = 30
+
+    # How often should auth tokens be rotated for authenticated users when being active. The default is each 10 minutes.
+    ;token_rotation_interval_minutes = 10
+
     # Set to true to disable (hide) the login form, useful if you use OAuth, defaults to false
     ;disable_login_form = false
 
     # Set to true to disable the signout link in the side menu. useful if you use auth.proxy, defaults to false
     ;disable_signout_menu = false
 
-    #################################### Anonymous Auth ##########################
+    # URL to redirect the user to after sign out
+    ;signout_redirect_url =
+
+    # Set to true to attempt login with OAuth automatically, skipping the login screen.
+    # This setting is ignored if multiple OAuth providers are configured.
+    ;oauth_auto_login = false
+
+    # limit of api_key seconds to live before expiration
+    ;api_key_max_seconds_to_live = -1
+
+    #################################### Anonymous Auth ######################
     [auth.anonymous]
     # enable anonymous access
     ;enabled = false
@@ -352,27 +515,131 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
 
     #################################### Github Auth ##########################
     [auth.github]
-    enabled = false
+    ;enabled = false
+    ;allow_sign_up = true
+    ;client_id = some_id
+    ;client_secret = some_secret
+    ;scopes = user:email,read:org
+    ;auth_url = https://github.com/login/oauth/authorize
+    ;token_url = https://github.com/login/oauth/access_token
+    ;api_url = https://api.github.com/user
+    ;allowed_domains =
+    ;team_ids =
+    ;allowed_organizations =
+
+    #################################### GitLab Auth #########################
+    [auth.gitlab]
+    ;enabled = false
+    ;allow_sign_up = true
+    ;client_id = some_id
+    ;client_secret = some_secret
+    ;scopes = api
+    ;auth_url = https://gitlab.com/oauth/authorize
+    ;token_url = https://gitlab.com/oauth/token
+    ;api_url = https://gitlab.com/api/v4
+    ;allowed_domains =
+    ;allowed_groups =
 
     #################################### Google Auth ##########################
     [auth.google]
-    enabled = false
-
-    #################################### Generic OAuth ##########################
-    [auth.generic_oauth]
-    enabled = false
+    ;enabled = false
+    ;allow_sign_up = true
+    ;client_id = some_client_id
+    ;client_secret = some_client_secret
+    ;scopes = https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email
+    ;auth_url = https://accounts.google.com/o/oauth2/auth
+    ;token_url = https://accounts.google.com/o/oauth2/token
+    ;api_url = https://www.googleapis.com/oauth2/v1/userinfo
+    ;allowed_domains =
+    ;hosted_domain =
 
     #################################### Grafana.com Auth ####################
     [auth.grafana_com]
-    enabled = false
+    ;enabled = false
+    ;allow_sign_up = true
+    ;client_id = some_id
+    ;client_secret = some_secret
+    ;scopes = user:email
+    ;allowed_organizations =
 
-    #################################### Auth Proxy ##########################
-    [auth.proxy]
-    enabled = false
+    #################################### Generic OAuth ##########################
+    [auth.generic_oauth]
+    ;enabled = false
+    ;name = OAuth
+    ;allow_sign_up = true
+    ;client_id = some_id
+    ;client_secret = some_secret
+    ;scopes = user:email,read:org
+    ;email_attribute_name = email:primary
+    ;email_attribute_path =
+    ;auth_url = https://foo.bar/login/oauth/authorize
+    ;token_url = https://foo.bar/login/oauth/access_token
+    ;api_url = https://foo.bar/user
+    ;allowed_domains =
+    ;team_ids =
+    ;allowed_organizations =
+    ;role_attribute_path =
+    ;tls_skip_verify_insecure = false
+    ;tls_client_cert =
+    ;tls_client_key =
+    ;tls_client_ca =
+
+    #################################### SAML Auth ###########################
+    [auth.saml] # Enterprise only
+    # Defaults to false. If true, the feature is enabled.
+    ;enabled = false
+
+    # Base64-encoded public X.509 certificate. Used to sign requests to the IdP
+    ;certificate =
+
+    # Path to the public X.509 certificate. Used to sign requests to the IdP
+    ;certificate_path =
+
+    # Base64-encoded private key. Used to decrypt assertions from the IdP
+    ;private_key =
+
+    ;# Path to the private key. Used to decrypt assertions from the IdP
+    ;private_key_path =
+
+    # Base64-encoded IdP SAML metadata XML. Used to verify and obtain binding locations from the IdP
+    ;idp_metadata =
+
+    # Path to the SAML metadata XML. Used to verify and obtain binding locations from the IdP
+    ;idp_metadata_path =
+
+    # URL to fetch SAML IdP metadata. Used to verify and obtain binding locations from the IdP
+    ;idp_metadata_url =
+
+    # Duration, since the IdP issued a response and the SP is allowed to process it. Defaults to 90 seconds.
+    ;max_issue_delay = 90s
+
+    # Duration, for how long the SP's metadata should be valid. Defaults to 48 hours.
+    ;metadata_valid_duration = 48h
+
+    # Friendly name or name of the attribute within the SAML assertion to use as the user's name
+    ;assertion_attribute_name = displayName
+
+    # Friendly name or name of the attribute within the SAML assertion to use as the user's login handle
+    ;assertion_attribute_login = mail
+
+    # Friendly name or name of the attribute within the SAML assertion to use as the user's email
+    ;assertion_attribute_email = mail
 
     #################################### Basic Auth ##########################
     [auth.basic]
     enabled = false
+
+    #################################### Auth Proxy ##########################
+    [auth.proxy]
+    ;enabled = false
+    ;header_name = X-WEBAUTH-USER
+    ;header_property = username
+    ;auto_sign_up = true
+    ;sync_ttl = 60
+    ;whitelist = 192.168.1.1, 192.168.2.1
+    ;headers = Email:X-User-Email, Name:X-User-Name
+    # Read the auth proxy docs for details on what the setting below enables
+    ;enable_login_token = false
 
     #################################### Auth LDAP ##########################
     [auth.ldap]
@@ -380,25 +647,29 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     config_file = #{grafana_ldap_config_file}
     allow_sign_up = true
 
+    # LDAP backround sync (Enterprise only)
+    # At 1 am every day
+    ;sync_cron = "0 0 1 * * *"
+    ;active_sync_enabled = true
+
     #################################### SMTP / Emailing ##########################
     [smtp]
     enabled = true
     host = {{ key "config/environment/mail/smtp/host" }}
     ;user =
-    # If the password contains # or ; you have to wrap it with trippel quotes. Ex """#password;"""
+    # If the password contains # or ; you have to wrap it with tripple quotes. Ex """#password;"""
     ;password =
     ;cert_file =
     ;key_file =
     ;skip_verify = false
-
     from_address = grafana@{{ key "config/environment/mail/suffix" }}
     from_name = Grafana
-
     # EHLO identity in SMTP dialog (defaults to instance_name)
     ;ehlo_identity = dashboard.example.com
 
     [emails]
     ;welcome_email_on_sign_up = false
+    ;templates_pattern = emails/*.html
 
     #################################### Logging ##########################
     [log]
@@ -412,6 +683,41 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # optional settings to set different levels for specific loggers. Ex filters = sqlstore:debug
     ;filters =
 
+    # For "console" mode only
+    [log.console]
+    ;level =
+
+    # log line format, valid options are text, console and json
+    ;format = console
+
+    # For "file" mode only
+    [log.file]
+    ;level =
+
+    # log line format, valid options are text, console and json
+    ;format = text
+
+    # This enables automated log rotate(switch of following options), default is true
+    ;log_rotate = true
+
+    # Max line number of single file, default is 1000000
+    ;max_lines = 1000000
+
+    # Max size shift of single file, default is 28 means 1 << 28, 256MB
+    ;max_size_shift = 28
+
+    # Segment log daily, default is true
+    ;daily_rotate = true
+
+    # Expired days of log file(delete after max days), default is 7
+    ;max_days = 7
+
+    [log.syslog]
+    ;level =
+
+    # log line format, valid options are text, console and json
+    ;format = text
+
     # Syslog network type and address. This can be udp, tcp, or unix. If left blank, the default unix endpoints will be used.
     ;network =
     ;address =
@@ -422,29 +728,97 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # Syslog tag. By default, the process' argv[0] is used.
     ;tag =
 
+    #################################### Usage Quotas ########################
+    [quota]
+    ; enabled = false
+
+    #### set quotas to -1 to make unlimited. ####
+    # limit number of users per Org.
+    ; org_user = 10
+
+    # limit number of dashboards per Org.
+    ; org_dashboard = 100
+
+    # limit number of data_sources per Org.
+    ; org_data_source = 10
+
+    # limit number of api_keys per Org.
+    ; org_api_key = 10
+
+    # limit number of orgs a user can create.
+    ; user_org = 10
+
+    # Global limit of users.
+    ; global_user = -1
+
+    # global limit of orgs.
+    ; global_org = -1
+
+    # global limit of dashboards
+    ; global_dashboard = -1
+
+    # global limit of api_keys
+    ; global_api_key = -1
+
+    # global limit on number of logged in users.
+    ; global_session = -1
 
     #################################### Alerting ############################
     [alerting]
     # Disable alerting engine & UI features
     enabled = true
-
     # Makes it possible to turn off alert rule execution but alerting UI is visible
-    execute_alerts = true
+    ;execute_alerts = true
+
+    # Default setting for new alert rules. Defaults to categorize error and timeouts as alerting. (alerting, keep_state)
+    ;error_or_timeout = alerting
+
+    # Default setting for how Grafana handles nodata or null values in alerting. (alerting, no_data, keep_state, ok)
+    ;nodata_or_nullvalues = no_data
+
+    # Alert notifications can include images, but rendering many images at the same time can overload the server
+    # This limit will protect the server from render overloading and make sure notifications are sent out quickly
+    ;concurrent_render_limit = 5
+
+
+    # Default setting for alert calculation timeout. Default value is 30
+    ;evaluation_timeout_seconds = 30
+
+    # Default setting for alert notification timeout. Default value is 30
+    ;notification_timeout_seconds = 30
+
+    # Default setting for max attempts to sending alert notifications. Default value is 3
+    ;max_attempts = 3
+
+    #################################### Explore #############################
+    [explore]
+    # Enable the Explore section
+    ;enabled = true
 
     #################################### Internal Grafana Metrics ##########################
     # Metrics available at HTTP API Url /metrics
     [metrics]
     # Disable / Enable internal metrics
-    enabled = true
+    ;enabled           = true
+    # Graphite Publish interval
+    ;interval_seconds  = 10
+    # Disable total stats (stat_totals_*) metrics to be generated
+    ;disable_total_stats = false
 
-    # Publish interval
-    interval_seconds  = 10
+    #If both are set, basic auth will be required for the metrics endpoint.
+    ; basic_auth_username =
+    ; basic_auth_password =
 
     # Send internal metrics to Graphite
     [metrics.graphite]
     # Enable by setting the address setting (ex localhost:2003)
     address = #{telegraf_graphite_host}:#{telegraf_graphite_port}
     ;prefix = prod.grafana.%(instance_name)s.
+
+    #################################### Grafana.com integration  ##########################
+    # Url used to import dashboards directly from Grafana.com
+    [grafana_com]
+    ;url = https://grafana.com
 
     #################################### Distributed tracing ############
     [tracing.jaeger]
@@ -462,11 +836,11 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     # and indicates the initial sampling rate before the actual one
     # is received from the mothership
     ;sampler_param = 1
-
-    #################################### Grafana.com integration  ##########################
-    # Url used to to import dashboards directly from Grafana.com
-    [grafana_com]
-    ;url = https://grafana.com
+    # Whether or not to use Zipkin propagation (x-b3- HTTP headers).
+    ;zipkin_propagation = false
+    # Setting this to true disables shared RPC spans.
+    # Not disabling is the most common setting when using Zipkin elsewhere in your infrastructure.
+    ;disable_shared_zipkin_spans = false
 
     #################################### External image storage ##########################
     [external_image_storage]
@@ -500,10 +874,28 @@ file "#{consul_template_template_path}/#{grafana_ini_template_file}" do
     [external_image_storage.local]
     # does not require any configuration
 
-    #################################### Explore ##########################
-    [explore]
-    # Enable the Explore section
-    enabled = true
+    [rendering]
+    # Options to configure a remote HTTP image rendering service, e.g. using https://github.com/grafana/grafana-image-renderer.
+    # URL to a remote HTTP image renderer service, e.g. http://localhost:8081/render, will enable Grafana to render panels and dashboards to PNG-images using HTTP requests to an external service.
+    ;server_url =
+    # If the remote HTTP image renderer service runs on a different server than the Grafana server you may have to configure this to a URL where Grafana is reachable, e.g. http://grafana.domain/.
+    ;callback_url =
+
+    [panels]
+    # If set to true Grafana will allow script tags in text panels. Not recommended as it enable XSS vulnerabilities.
+    ;disable_sanitize_html = false
+
+    [plugins]
+    ;enable_alpha = false
+    ;app_tls_skip_verify_insecure = false
+
+    [enterprise]
+    # Path to a valid Grafana Enterprise license.jwt file
+    ;license_path =
+
+    [feature_toggles]
+    # enable features, separated by spaces
+    ;enable =
   CONF
   group 'root'
   mode '0550'
@@ -525,7 +917,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # This is the destination path on disk where the source template will render.
       # If the parent directories do not exist, Consul Template will attempt to
       # create them, unless create_dest_dirs is false.
-      destination = "#{grafana_config_directory}/grafana.ini"
+      destination = "#{grafana_config_file}"
 
       # This options tells Consul Template to create the parent directories of the
       # destination path if they do not exist. The default value is true.
@@ -535,7 +927,7 @@ file "#{consul_template_config_path}/grafana_custom_ini.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "/bin/bash -c 'chown #{node['grafana']['user']}:#{node['grafana']['group']} #{grafana_config_directory}/grafana.ini && systemctl restart #{grafana_service}'"
+      command = "/bin/bash -c 'chown #{node['grafana']['service_user']}:#{node['grafana']['service_group']} #{grafana_config_file} && systemctl restart #{grafana_service}'"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.
@@ -685,7 +1077,7 @@ file "#{consul_template_config_path}/grafana_ldap.hcl" do
       # command will only run if the resulting template changes. The command must
       # return within 30s (configurable), and it must have a successful exit code.
       # Consul Template is not a replacement for a process monitor or init system.
-      command = "/bin/bash -c 'chown #{node['grafana']['user']}:#{node['grafana']['group']} #{grafana_ldap_config_file} && systemctl restart #{grafana_service}'"
+      command = "/bin/bash -c 'chown #{node['grafana']['service_user']}:#{node['grafana']['service_group']} #{grafana_ldap_config_file} && systemctl restart #{grafana_service}'"
 
       # This is the maximum amount of time to wait for the optional command to
       # return. Default is 30s.

@@ -21,7 +21,7 @@
         {
             "boot_wait": "5s",
             "boot_command": [],
-            "clone_from_vmxc_path": "{{ user `dir_vm_import` }}",
+            "clone_from_vmcx_path": "{{ user `dir_vm_import` }}",
             "communicator": "ssh",
             "enable_dynamic_memory": false,
             "enable_mac_spoofing": false,
@@ -50,16 +50,6 @@
     ],
     "provisioners": [
         {
-            "command": "Set-VM -Name {{ user `vm_name` }} -AutomaticCheckpointsEnabled $false",
-            "execute_command": ["Powershell.exe", "-NonInteractive", "-NoLogo", "-NoProfile", "-Command", "{{.Command}}"],
-            "type": "shell-local"
-        },
-        {
-            "command": "Get-VMSnapshot -VMName {{ user `vm_name` }} | Remove-VMSnapshot",
-            "execute_command": ["Powershell.exe", "-NonInteractive", "-NoLogo", "-NoProfile", "-Command", "{{.Command}}"],
-            "type": "shell-local"
-        },
-        {
             "destination": "/tmp/unbound_zones.conf",
             "source": "{{ user `dir_src_provisioning` }}/unbound_zones.conf",
             "type": "file"
@@ -68,7 +58,7 @@
             "expect_disconnect": false,
             "inline": [
                 "dos2unix /tmp/unbound_zones.conf",
-                "sudo cp -a /tmp/unbound_zones.conf /etc/unbound.d/unbound_zones.conf",
+                "sudo cp -a /tmp/unbound_zones.conf /etc/unbound/unbound.conf.d/unbound_zones.conf",
                 "sudo systemctl restart unbound"
             ],
             "type": "shell"
@@ -77,7 +67,7 @@
             "cookbook_paths": [
                 "{{ user `dir_cookbooks_vendors` }}"
             ],
-            "execute_command": "sudo chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}}",
+            "execute_command": "sudo -E chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}} --chef-license accept-no-persist",
             "guest_os_type": "unix",
             "install_command": "echo \"Do nothing because chef should already be installed\"",
             "run_list": [

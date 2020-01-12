@@ -9,16 +9,15 @@ Describe 'The unbound application' {
         }
 
         It 'with environment configuration in /etc/unbound.d' {
-            '/etc/unbound.d/unbound_zones.conf' | Should Exist
+            '/etc/unbound/unbound.conf.d/unbound_zones.conf' | Should Exist
         }
     }
 
     Context 'has been daemonized' {
         $serviceConfigurationPath = '/etc/systemd/system/unbound.service'
-        if (-not (Test-Path $serviceConfigurationPath))
-        {
+        if (-not (Test-Path $serviceConfigurationPath)) {
             It 'has a systemd configuration' {
-               $false | Should Be $true
+                $false | Should Be $true
             }
         }
 
@@ -54,16 +53,12 @@ WantedBy = multi-user.target
         }
 
         It 'and is running' {
-            $systemctlOutput[4] | Should Match 'Active:\sactive\s\(running\).*'
+            $systemctlOutput[2] | Should Match 'Active:\sactive\s\(running\).*'
         }
     }
 
     Context 'allows resolution of addresses' {
-        $ifConfigResponse = & ifconfig eth0
-        $line = $ifConfigResponse[1].Trim()
-        # Expecting line to be:
-        #     inet addr:192.168.6.46  Bcast:192.168.6.255  Mask:255.255.255.0
-        $localIpAddress = $line.SubString(10, ($line.IndexOf(' ', 10) - 10))
+        $localIpAddress = & ip a show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
 
         It 'should resolve www.google.com' {
             $result = & dig +short www.google.com

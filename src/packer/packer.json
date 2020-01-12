@@ -69,7 +69,7 @@
             ],
             "execute_command": "sudo -E chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}} --chef-license accept-no-persist",
             "guest_os_type": "unix",
-            "install_command": "curl -LO https://omnitruck.chef.io/install.sh && {{if .Sudo}}sudo{{end}} bash ./install.sh -v 15.0.300 && rm install.sh",
+            "install_command": "echo \"Do nothing because chef should already be installed\"",
             "run_list": [
                 "{{ user `cookbook_name` }}::default"
             ],

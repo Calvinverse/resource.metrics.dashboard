@@ -11,7 +11,7 @@ describe 'resource_metrics_dashboard::default' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
     it 'has the correct platform_version' do
-      expect(chef_run.node['platform_version']).to eq('16.04')
+      expect(chef_run.node['platform_version']).to eq('18.04')
     end
   end
 end

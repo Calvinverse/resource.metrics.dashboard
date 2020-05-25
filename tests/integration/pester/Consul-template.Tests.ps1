@@ -26,7 +26,8 @@ Describe 'The consul-template application' {
         $expectedContent = @'
 [Service]
 ExecStart = /usr/local/bin/run_consul-template.sh
-Restart = on-failure
+RestartSec = 5
+Restart = always
 EnvironmentFile = /etc/environment
 
 [Unit]
@@ -34,6 +35,7 @@ Description = Consul Template
 Documentation = https://github.com/hashicorp/consul-template
 Requires = multi-user.target
 After = multi-user.target
+StartLimitIntervalSec = 0
 
 [Install]
 WantedBy = multi-user.target

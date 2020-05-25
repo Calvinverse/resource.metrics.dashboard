@@ -28,21 +28,24 @@ Describe 'The consul application' {
         }
 
         $expectedContent = @'
-[Unit]
-Description=consul
-Wants=network.target
-After=network.target
-
 [Service]
-Environment="GOMAXPROCS=2" "PATH=/usr/local/bin:/usr/bin:/bin"
-ExecStart=/opt/consul/1.6.2/consul agent -config-file=/etc/consul/consul.json -config-dir=/etc/consul/conf.d
-ExecReload=/bin/kill -HUP $MAINPID
-KillSignal=TERM
-User=consul
-WorkingDirectory=/var/lib/consul
+ExecStart = /opt/consul/1.6.2/consul agent -config-file=/etc/consul/consul.json -config-dir=/etc/consul/conf.d
+ExecReload = /bin/kill -HUP $MAINPID
+RestartSec = 5
+Restart = always
+WorkingDirectory = /var/lib/consul
+User = consul
+Environment = "GOMAXPROCS=2" "PATH=/usr/local/bin:/usr/bin:/bin"
+KillSignal = TERM
+
+[Unit]
+Description = consul
+Wants = network.target
+After = network.target
+StartLimitIntervalSec = 0
 
 [Install]
-WantedBy=multi-user.target
+WantedBy = multi-user.target
 
 '@
         $serviceFileContent = Get-Content $serviceConfigurationPath | Out-String

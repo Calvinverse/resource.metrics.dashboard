@@ -14,5 +14,10 @@
     "dir_cookbooks_vendors": "${DirVendorCookbooksJsonEscaped}",
     "dir_src_provisioning": "${DirSrcProvisioningJsonEscaped}",
 
+    "metadata_category": "${ProductShortName}",
+    "metadata_commit_sha": "${VcsRevision}",
+    "metadata_date": "${Now}",
+    "metadata_version": "${VersionMajor}.${VersionMinor}.${VersionPatch}",
+
     "vm_name": "${ImageName}-${VersionMajor}.${VersionMinor}.${VersionPatch}"
 }

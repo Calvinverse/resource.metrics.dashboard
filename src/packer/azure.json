@@ -15,12 +15,22 @@
         "dir_cookbooks_vendors": "packages/vendor/cookbooks",
         "dir_src_provisioning": "src/provisioning",
 
+        "metadata_category": "CATEGORY_DEFINED_IN_VAR_FILE",
+        "metadata_commit_sha": "COMMIT_SHA_DEFINED_IN_VAR_FILE",
+        "metadata_date": "DATE_DEFINED_IN_VAR_FILE",
+        "metadata_version": "VERSION_DEFINED_IN_VAR_FILE",
+
         "vm_name": "not_really_a_vm_name"
     },
     "builders": [
         {
             "azure_tags": {
-                "stage": "qa"
+                "category": "{{ user `metadata_category` }}",
+                "commit": "{{ user `metadata_commit_sha` }}",
+                "date": "{{ user `metadata_date` }}",
+                "createdby": "packer",
+                "stage": "qa",
+                "version": "{{ user `metadata_version` }}"
             },
 
             "client_cert_path": "{{ user `azure_client_cert_path` }}",

@@ -29,7 +29,7 @@ Describe 'The consul application' {
 
         $expectedContent = @'
 [Service]
-ExecStart = /opt/consul/1.6.2/consul agent -config-file=/etc/consul/consul.json -config-dir=/etc/consul/conf.d
+ExecStart = /opt/consul/1.8.0/consul agent -config-file=/etc/consul/consul.json -config-dir=/etc/consul/conf.d
 ExecReload = /bin/kill -HUP $MAINPID
 RestartSec = 5
 Restart = always

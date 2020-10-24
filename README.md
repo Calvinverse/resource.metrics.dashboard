@@ -8,6 +8,9 @@ instance of the [Grafana dashboard application](https://grafana.com/).
 The image is created by using the [Linux base image](https://github.com/Calvinverse/base.vm.linux)
 and amending it using a [Chef](https://www.chef.io/chef/) cookbook which installs Grafana.
 
+There are two different images that can be created. One for use on a Hyper-V server and one for use
+in Azure. Which image is created depends on the build command line used.
+
 ### Contents
 
 * The Grafana application. The version of which is determined by the
@@ -63,7 +66,62 @@ Metrics are collected from Grafana via [Telegraf](https://www.influxdata.com/tim
 The build process follows the standard procedure for
 [building Calvinverse images](https://www.calvinverse.net/documentation/how-to-build).
 
+### Hyper-V
+
+For building Hyper-V images use the following command line
+
+    msbuild entrypoint.msbuild /t:build /P:ShouldCreateHypervImage=true /P:RepositoryArchive=PATH_TO_ARTIFACTLOCATION
+
+where `PATH_TO_ARTIFACTLOCATION` is the full path to the directory where the base image artifact
+file is stored.
+
+In order to run the smoke tests on the generated image run the following command line
+
+    msbuild entrypoint.msbuild /t:test /P:ShouldCreateHypervImage=true
+
+
+### Azure
+
+For building Azure images use the following command line
+
+    msbuild entrypoint.msbuild /t:build
+        /P:ShouldCreateAzureImage=true
+        /P:AzureLocation=LOCATION
+        /P:AzureClientId=CLIENT_ID
+        /P:AzureClientCertPath=CLIENT_CERT_PATH
+        /P:AzureSubscriptionId=SUBSCRIPTION_ID
+        /P:AzureImageResourceGroup=IMAGE_RESOURCE_GROUP
+
+where:
+
+* `LOCATION` - The azure data center in which the image should be created. Note that this needs to be the same
+  region as the location of the base image. If you want to create the image in a different location then you need to
+  copy the base image to that region first.
+* `CLIENT_ID` - The client ID of the user that [Packer](https://packer.io) will use to
+  [authenticate with Azure](https://www.packer.io/docs/builders/azure#azure-active-directory-service-principal).
+* `CLIENT_CERT_PATH` - The client certificate which Packer will use to authenticate with Azure
+* `SUBSCRIPTION_ID` - The subscription ID in which the image should be created.
+* `IMAGE_RESOURCE_GROUP` - The resource group from which the base image will be pulled and in which the new image
+  will be placed once the build completes.
+
+For running the smoke tests on the Azure image
+
+    msbuild entrypoint.msbuild /t:test
+        /P:ShouldCreateAzureImage=true
+        /P:AzureLocation=LOCATION
+        /P:AzureClientId=CLIENT_ID
+        /P:AzureClientCertPath=CLIENT_CERT_PATH
+        /P:AzureSubscriptionId=SUBSCRIPTION_ID
+        /P:AzureImageResourceGroup=IMAGE_RESOURCE_GROUP
+        /P:AzureTestImageResourceGroup=TEST_RESOURCE_GROUP
+
+where all the arguments are similar to the build arguments and `TEST_RESOURCE_GROUP` points to an Azure resource
+group in which the test images are placed. Note that this resource group needs to be cleaned out after successful
+tests have been run because Packer will in that case create a new image.
+
 ## Deploy
+
+### Hyper-V
 
 * Download the new image to one of your Hyper-V hosts.
 * Create a directory for the image and copy the image VHDX file there.
@@ -86,3 +144,17 @@ The build process follows the standard procedure for
   * Issue the `consul leave` command
   * Shut the machine down with the `sudo shutdown now` command
   * Once the machine has stopped, delete it
+
+### Azure
+
+The easiest way to deploy the Azure images into a cluster on Azure is to use the terraform scripts
+provided by the [Azure metrics diagnositcs](https://github.com/Calvinverse/infrastructure.azure.observability.metrics)
+repository. Those scripts will create an InfluxDb cluster of the suitable size and add a single instance
+of a node with the Grafana enabled.
+
+## Usage
+
+Once the resource is started and provided with the correct permissions to retrieve information
+from [Vault](https://vaultproject.io) it will automatically connect to the InfluxDb node. Additionally the AD credentials
+will be obtained from Vault. Once these are processed users will be able to log into Grafana with their
+AD credentials.

@@ -5,7 +5,7 @@ instance of the [Grafana dashboard application](https://grafana.com/).
 
 ## Image
 
-The image is created by using the [Linux base image](https://github.com/Calvinverse/base.linux)
+The image is created by using the [Linux base image](https://github.com/Calvinverse/base.vm.linux)
 and amending it using a [Chef](https://www.chef.io/chef/) cookbook which installs Grafana.
 
 ### Contents
@@ -21,7 +21,7 @@ of the template parameters with values from the Consul Key-Value store.
 
 Important parts of the configuration file are
 
-* Authentication is done via LDAP which is configued to use the Vista Active Directory system.
+* Authentication is done via LDAP which is configued to use an Active Directory system.
 * Dashboards and data sources are assumed to be obtained from the Consul Key-Value store via
   Consul-Template using the [Grafana provisioning](http://docs.grafana.org/administration/provisioning/)
   feature.

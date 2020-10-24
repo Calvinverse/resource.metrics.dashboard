@@ -3,9 +3,8 @@
         "admin_username": "admin",
         "admin_password": "admin",
 
-        "cookbook_name": "not_realy_a_cookbook_name",
+        "cookbook_name": "not_really_a_cookbook_name",
 
-        "dir_cookbooks_src": "src/cookbooks",
         "dir_cookbooks_vendors": "packages/vendor/cookbooks",
         "dir_http_user": null,
         "dir_src_provisioning": "src/provisioning",
@@ -15,7 +14,8 @@
         "vm_import_directory": null,
         "vm_name": "not_really_a_vm_name",
         "vm_ram_size_in_mb": "1024",
-        "vm_switch_name": "internal_switch"
+        "vm_switch_name": "this_switch_does_not_exist",
+        "vm_switch_vlan": ""
     },
     "builders": [
         {
@@ -33,8 +33,8 @@
             "http_directory": "{{ user `dir_http_user` }}",
             "http_port_min": 8150,
             "http_port_max": 8160,
+            "memory": "{{ user `vm_ram_size_in_mb` }}",
             "output_directory": "{{ user `dir_temp` }}/{{ user `vm_name` }}",
-            "ram_size": "{{ user `vm_ram_size_in_mb` }}",
             "secure_boot_template": "MicrosoftUEFICertificateAuthority",
             "shutdown_command": "echo '{{user `admin_password`}}' | sudo -S -E shutdown -P now",
             "shutdown_timeout": "5m",
@@ -67,7 +67,7 @@
             "cookbook_paths": [
                 "{{ user `dir_cookbooks_vendors` }}"
             ],
-            "execute_command": "sudo -E chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}} --chef-license accept-no-persist",
+            "execute_command": "sudo chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}} --chef-license accept-no-persist",
             "guest_os_type": "unix",
             "install_command": "echo \"Do nothing because chef should already be installed\"",
             "run_list": [

@@ -4,7 +4,6 @@
 
     "cookbook_name": "${NameCookbook}",
 
-    "dir_cookbooks_src": "${DirSrcCookbooksJsonEscaped}",
     "dir_cookbooks_vendors": "${DirVendorCookbooksJsonEscaped}",
     "dir_http_user": "",
     "dir_src_provisioning": "${DirSrcProvisioningJsonEscaped}",

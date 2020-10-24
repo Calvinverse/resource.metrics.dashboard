@@ -30,8 +30,8 @@
             "http_directory": "{{ user `dir_http_user` }}",
             "http_port_min": 8150,
             "http_port_max": 8160,
+            "memory": "{{ user `vm_ram_size_in_mb` }}",
             "output_directory": "{{ user `dir_temp` }}/test-{{ user `vm_name` }}",
-            "ram_size": "{{ user `vm_ram_size_in_mb` }}",
             "secondary_iso_images": [
                 "{{ user `dir_deploy` }}/{{ user `product_name` }}-test-provision.iso"
             ],
@@ -44,6 +44,7 @@
             "ssh_timeout": "4h",
             "ssh_username": "{{user `admin_username`}}",
             "switch_name": "{{user `vm_switch_name`}}",
+            "switch_vlan_id": "{{ user `vm_switch_vlan` }}",
             "type": "hyperv-vmcx",
             "vlan_id": "{{ user `vm_switch_vlan` }}",
             "vm_name": "test-{{ user `vm_name` }}"
@@ -53,7 +54,7 @@
         {
             "expect_disconnect" : true,
             "inline": [
-                "echo \"Waiting for reboot after provisioning ...\""
+                "echo \"Waited for reboot after provisioning ...\""
             ],
             "pause_before" : "30s",
             "type": "shell"
@@ -66,7 +67,7 @@
             "type": "shell"
         },
         {
-            "destination": "/test/pester/",
+            "destination": "/test/pester",
             "source": "{{ user `dir_temp` }}/tests/integration/pester",
             "type": "file"
         },
@@ -102,7 +103,7 @@
             "inline": [
                 "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; Set-PSRepository -Name PSGallery -InstallationPolicy Trusted '",
                 "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; Install-Module Pester '",
-                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; $result = Invoke-Pester -Script /test/pester/* -PassThru; exit $result.FailedCount '"
+                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\";[Environment]::SetEnvironmentVariable(\"Hypervisor\", \"hyper-v\"); $result = Invoke-Pester -Script /test/pester/* -PassThru; exit $result.FailedCount '"
             ],
             "type": "shell"
         }

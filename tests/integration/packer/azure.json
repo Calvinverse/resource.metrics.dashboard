@@ -1,0 +1,104 @@
+{
+    "variables": {
+        "azure_client_cert_path": "_not_really_a_client_cert_path",
+        "azure_client_id": "_not_really_a_client_id",
+        "azure_image_storage_type": "Standard_LRS",
+        "azure_location": "australiaeast",
+        "azure_resource_group": "_not_really_a_resource_group_name",
+        "azure_subscription_id": "not_really_a_subscription_id",
+        "azure_test_resource_group": "_not_really_a_resource_group_name",
+        "azure_vm_size": "Standard_A1",
+
+        "dir_temp": null,
+        "dir_test_provision": "not_really_a_directory",
+
+        "vm_name": "not_really_a_vm_name"
+    },
+    "builders": [
+        {
+            "azure_tags": {
+                "deploy": "false"
+            },
+
+            "client_cert_path": "{{ user `azure_client_cert_path` }}",
+            "client_id": "{{ user `azure_client_id` }}",
+
+            "custom_data_file": "{{ user `dir_test_provision` }}/cloud-init/cloud-init.yaml",
+
+            "custom_managed_image_name": "{{ user `vm_name` }}",
+            "custom_managed_image_resource_group_name": "{{ user `azure_resource_group` }}",
+
+            "location": "{{ user `azure_location` }}",
+
+            "managed_image_name": "test-{{ user `vm_name` }}",
+            "managed_image_resource_group_name": "{{ user `azure_test_resource_group` }}",
+            "managed_image_storage_account_type": "{{ user `azure_image_storage_type` }}",
+
+            "os_type": "linux",
+
+            "subscription_id": "{{ user `azure_subscription_id` }}",
+
+            "type": "azure-arm",
+
+            "vm_size": "{{ user `azure_vm_size` }}"
+        }
+    ],
+    "provisioners": [
+        {
+            "expect_disconnect": true,
+            "inline": [
+                "echo \"Waiting for reboot after provisioning ...\""
+            ],
+            "pause_before": "45s",
+            "type": "shell"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "echo '{{user `admin_password`}}' | sudo -S -E mkdir -m 777 /test"
+            ],
+            "type": "shell"
+        },
+        {
+            "destination": "/test/pester/",
+            "source": "{{ user `dir_temp` }}/tests/integration/pester",
+            "type": "file"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "(/usr/lib/update-notifier/apt-check --package-names 2>&1) &>> /test/updates.txt"
+            ],
+            "type": "shell"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "echo '{{user `admin_password`}}' | sudo -S -E apt-get update",
+                "echo '{{user `admin_password`}}' | sudo -S -E apt install --assume-yes curl",
+                "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -",
+                "curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft.list",
+                "echo '{{user `admin_password`}}' | sudo -S -E apt-get update",
+                "echo '{{user `admin_password`}}' | sudo -S -E apt-get install --assume-yes powershell",
+                "echo '{{user `admin_password`}}' | sudo -S -E apt-get install --assume-yes unzip"
+            ],
+            "type": "shell"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '. /test/pester/environment/Initialize-Environment.ps1; Initialize-Environment'"
+            ],
+            "type": "shell"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; Set-PSRepository -Name PSGallery -InstallationPolicy Trusted '",
+                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; Install-Module Pester '",
+                "echo '{{user `admin_password`}}' | sudo -S -E pwsh -Command '$ErrorActionPreference = \"Stop\"; [Environment]::SetEnvironmentVariable(\"Hypervisor\", \"azure\"); $result = Invoke-Pester -Script /test/pester/* -PassThru; exit $result.FailedCount '"
+            ],
+            "type": "shell"
+        }
+    ]
+}

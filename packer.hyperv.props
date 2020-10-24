@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project
+    DefaultTargets="Run"
+    ToolsVersion="14.0"
+    xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <!--
+        **** PREPARE - GENERATE FILES ****
+    -->
+    <PropertyGroup
+        Condition=" '$(ShouldCreateHyperVImage)' == 'true' ">
+    </PropertyGroup>
+    <ItemGroup
+        Condition=" '$(ShouldCreateHyperVImage)' == 'true' ">
+
+        <TemplateTokens Include="ImageName">
+            <ReplacementValue>$(LinuxImage.Replace(' ', '-').Replace('.', '-').ToLower())</ReplacementValue>
+        </TemplateTokens>
+
+        <TemplateTokens Include="LocalAdministratorName">
+            <ReplacementValue>thebigkahuna</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens Include="LocalAdministratorPassword">
+            <ReplacementValue>TheB1gK@huna</ReplacementValue>
+        </TemplateTokens>
+
+        <TemplateTokens Include="VmSwitch">
+            <ReplacementValue>VM-LAN</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens Include="VmSwitchVlan">
+            <ReplacementValue></ReplacementValue>
+        </TemplateTokens>
+
+        <!-- For the .isospec file -->
+        <TemplateTokens Include="DirBuildTempIso">
+            <ReplacementValue>$(DirBuildTempIso)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens Include="DirTestsIntegration">
+            <ReplacementValue>$(DirTestsIntegration)</ReplacementValue>
+        </TemplateTokens>
+    </ItemGroup>
+</Project>

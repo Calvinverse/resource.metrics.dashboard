@@ -15,7 +15,13 @@ Describe 'The users list' {
 
         It 'should contain a default user' {
             $users.Length | Should Be 1
-            $users[0] | Should Be '${LocalAdministratorName}'
+            if ([Environment]::GetEnvironmentVariable('Hypervisor') -eq 'azure' ) {
+                # On Azure packer will set its own user name
+                $users[0] | Should Be 'packer'
+            }
+            else {
+                $users[0] | Should Be '${LocalAdministratorName}'
+            }
         }
     }
 }

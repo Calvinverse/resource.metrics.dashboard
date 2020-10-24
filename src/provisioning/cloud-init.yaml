@@ -1,0 +1,18 @@
+#cloud-config
+write_files:
+- content: |
+    #
+    # See unbound.conf(5) man page, version 1.6.3.
+    #
+    server:
+    local-zone: "integrationtest." nodefault
+    domain-insecure: "integrationtest"
+
+    stub-zone:
+    name: "integrationtest"
+    stub-addr: 127.0.0.1@8600
+
+    forward-zone:
+    name: "."
+    forward-addr: 192.168.6.1
+  path: /etc/unbound.d/unbound_zones.conf

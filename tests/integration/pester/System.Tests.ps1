@@ -13,12 +13,26 @@ Describe 'On the system' {
 
     Context 'the administrator rights' {
         It 'should have default sudo settings' {
-            (Get-FileHash -Path /etc/sudoers -Algorithm SHA256).Hash | Should Be '1DA6E2BCBBA35669C9EB62370C88F4017686309C9AC4E6458D963321EAD42439'
+            if ([Environment]::GetEnvironmentVariable('Hypervisor') -eq 'azure' ) {
+                # On Azure Packer will add itself to the users list
+            }
+            else {
+                (Get-FileHash -Path /etc/sudoers -Algorithm SHA256).Hash | Should Be '1DA6E2BCBBA35669C9EB62370C88F4017686309C9AC4E6458D963321EAD42439'
+            }
         }
 
         It 'should not have additional sudo files' {
             '/etc/sudoers.d' | Should Exist
-            @( (Get-ChildItem -Path /etc/sudoers.d -File) ).Length | Should Be 1
+
+            if ([Environment]::GetEnvironmentVariable('Hypervisor') -eq 'azure' ) {
+                # On Azure there will be two files in the /etc/sudoers.d directory. The first one is the sudoers file,
+                # the second one is the cloud-init sudoers file
+                @( (Get-ChildItem -Path /etc/sudoers.d -File) ).Length | Should Be 2
+            }
+            else {
+                @( (Get-ChildItem -Path /etc/sudoers.d -File) ).Length | Should Be 1
+            }
+
         }
     }
 

@@ -1,0 +1,15 @@
+{
+    "azure_client_cert_path": "${AzureClientCertPathEscaped}",
+    "azure_client_id": "${AzureClientId}",
+    "azure_image_storage_type": "Standard_LRS",
+    "azure_location": "${AzureLocation}",
+    "azure_resource_group": "${AzureImageResourceGroup}",
+    "azure_subscription_id": "${AzureSubscriptionId}",
+    "azure_test_resource_group": "${AzureTestImageResourceGroup}",
+    "azure_vm_size": "Standard_A1",
+
+    "dir_temp": "${DirTempJsonEscaped}",
+    "dir_test_provision": "${DirTestsIntegrationProvisionJsonEscaped}",
+
+    "vm_name": "${ImageName}-${VersionMajor}.${VersionMinor}.${VersionPatch}"
+}

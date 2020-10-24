@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project
+    DefaultTargets="Run"
+    ToolsVersion="14.0"
+    xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <!--
+        **** PREPARE - GENERATE FILES ****
+    -->
+    <PropertyGroup
+        Condition=" '$(ShouldCreateAzureImage)' == 'true' ">
+    </PropertyGroup>
+    <ItemGroup
+        Condition=" '$(ShouldCreateAzureImage)' == 'true' ">
+
+        <TemplateTokens Include="ImageName">
+            <ReplacementValue>$(LinuxImage.Replace(' ', '-').Replace('.', '-').ToLower())</ReplacementValue>
+        </TemplateTokens>
+
+        <!-- FOR CHEF -->
+        <TemplateTokens
+            Include="ProvisioningFromCloudInit">
+            <ReplacementValue>true</ReplacementValue>
+        </TemplateTokens>
+
+        <!-- FOR PACKER -->
+        <TemplateTokens
+            Include="AzureBaseImageName">
+            <ReplacementValue>ubuntu-$(VersionLinuxBaseResource)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Include="AzureBaseImageResourceGroup">
+            <ReplacementValue>$(AzureImageResourceGroup)</ReplacementValue>
+        </TemplateTokens>
+
+        <TemplateTokens
+            Include="AzureClientCertPathEscaped">
+            <ReplacementValue>$(AzureClientCertPath.Replace('\', '/'))</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Include="AzureClientId">
+            <ReplacementValue>$(AzureClientId)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Include="AzureLocation">
+            <ReplacementValue>$(AzureLocation)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Include="AzureImageResourceGroup">
+            <ReplacementValue>$(AzureImageResourceGroup)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Include="AzureSubscriptionId">
+            <ReplacementValue>$(AzureSubscriptionId)</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens
+            Condition=" '$(IsTest)' == 'true' "
+            Include="AzureTestImageResourceGroup">
+            <ReplacementValue>$(AzureTestImageResourceGroup)</ReplacementValue>
+        </TemplateTokens>
+    </ItemGroup>
+</Project>

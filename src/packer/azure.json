@@ -1,0 +1,79 @@
+{
+    "variables": {
+        "azure_base_resource_group": "_not_really_a_resource_group_name",
+        "azure_base_vm_name": "_not_really_a_vm_name",
+        "azure_client_cert_path": "_not_really_a_client_cert_path",
+        "azure_client_id": "_not_really_a_client_id",
+        "azure_image_storage_type": "Standard_LRS",
+        "azure_location": "australiaeast",
+        "azure_resource_group": "_not_really_a_resource_group_name",
+        "azure_subscription_id": "not_really_a_subscription_id",
+        "azure_vm_size": "Standard_A1",
+
+        "cookbook_name": "not_realy_a_cookbook_name",
+
+        "dir_cookbooks_vendors": "packages/vendor/cookbooks",
+        "dir_src_provisioning": "src/provisioning",
+
+        "vm_name": "not_really_a_vm_name"
+    },
+    "builders": [
+        {
+            "azure_tags": {
+                "stage": "qa"
+            },
+
+            "client_cert_path": "{{ user `azure_client_cert_path` }}",
+            "client_id": "{{ user `azure_client_id` }}",
+
+            "custom_data_file": "{{ user `dir_src_provisioning` }}/cloud-init.yaml",
+
+            "custom_managed_image_name": "{{ user `azure_base_vm_name` }}",
+            "custom_managed_image_resource_group_name": "{{ user `azure_base_resource_group` }}",
+
+            "location": "{{ user `azure_location` }}",
+
+            "managed_image_name": "{{ user `vm_name` }}",
+            "managed_image_resource_group_name": "{{ user `azure_resource_group` }}",
+            "managed_image_storage_account_type": "{{ user `azure_image_storage_type` }}",
+
+            "os_type": "linux",
+
+            "subscription_id": "{{ user `azure_subscription_id` }}",
+
+            "type": "azure-arm",
+
+            "vm_size": "{{ user `azure_vm_size` }}"
+        }
+    ],
+    "provisioners": [
+        {
+            "cookbook_paths": [
+                "{{ user `dir_cookbooks_vendors` }}"
+            ],
+            "execute_command": "sudo chef-solo --no-color -c {{.ConfigPath}} -j {{.JsonPath}} --chef-license accept-no-persist",
+            "guest_os_type": "unix",
+            "install_command": "echo \"Do nothing because chef should already be installed\"",
+            "run_list": [
+                "{{ user `cookbook_name` }}::default"
+            ],
+            "type": "chef-solo"
+        },
+        {
+            "expect_disconnect": false,
+            "inline": [
+                "sudo dpkg -P chef",
+                "sudo rm -rf /etc/unbound.d/unbound_zones.conf"
+            ],
+            "type": "shell"
+        },
+        {
+            "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E sh '{{ .Path }}'",
+            "inline": [
+                "/usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync"
+            ],
+            "inline_shebang": "/bin/sh -x",
+            "type": "shell"
+        }
+    ]
+}

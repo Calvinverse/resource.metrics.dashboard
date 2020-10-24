@@ -175,6 +175,7 @@
         <!-- The directory that will contain all the temporary files needed during the build process -->
         <!-- <DirBuildTemp>$(DirBuild)\temp</DirBuildTemp> -->
         <DirBuildTempCookbooks>$(DirBuildTemp)\cookbooks</DirBuildTempCookbooks>
+        <DirBuildTempBuildPacker>$(DirBuildTemp)\build</DirBuildTempBuildPacker>
         <DirBuildTempTestsIntegrationPacker>$(DirBuildTemp)\tests\integration\packer</DirBuildTempTestsIntegrationPacker>
         <DirBuildTempTestsIntegrationPester>$(DirBuildTemp)\tests\integration\pester</DirBuildTempTestsIntegrationPester>
         <DirBuildTempVm>$(DirBuildTemp)\vm</DirBuildTempVm>
@@ -200,6 +201,7 @@
         <DirTestsIntegration>$(DirTests)\integration</DirTestsIntegration>
         <DirTestsIntegrationPacker>$(DirTestsIntegration)\packer</DirTestsIntegrationPacker>
         <DirTestsIntegrationPester>$(DirTestsIntegration)\pester</DirTestsIntegrationPester>
+        <DirTestsIntegrationProvision>$(DirTestsIntegration)\provision</DirTestsIntegrationProvision>
 
         <!-- The directory that contains all the vendor cookbooks -->
         <!-- <DirVendorCookbooks>$(DirWorkspace)\berks\cookbooks</DirVendorCookbooks> -->
@@ -232,7 +234,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <VersionLinuxBaseResource>1804.3.0</VersionLinuxBaseResource>
+        <VersionLinuxBaseResource>1804.4.0</VersionLinuxBaseResource>
     </PropertyGroup>
 
 
@@ -333,7 +335,7 @@
 
         Any failure during the branching process will stop the build process.
     -->
-    <ItemGroup>
+    <ItemGroup Condition=" '$(ShouldLoadBranchMergeTarget)' == 'true' ">
         <!-- GITFLOW: If the input branch (GitBranchExpected) is a feature branch then we merge to develop -->
         <!--
         <BranchMergeTarget Include="develop"
@@ -532,26 +534,10 @@
     <PropertyGroup>
         <ProductNamePrefix>Resource.</ProductNamePrefix>
     </PropertyGroup>
-    <ItemGroup>
+    <ItemGroup Condition=" '$(ShouldLoadTemplateTokens)' == 'true' ">
         <!-- General -->
         <TemplateTokens Include="ProductShortName">
             <ReplacementValue>$(ProductName.SubString($(ProductNamePrefix.Length)).Replace('.', '-').ToLower())</ReplacementValue>
-        </TemplateTokens>
-        <TemplateTokens Include="LocalAdministratorName">
-            <ReplacementValue>thebigkahuna</ReplacementValue>
-        </TemplateTokens>
-        <TemplateTokens Include="LocalAdministratorPassword">
-            <ReplacementValue>TheB1gK@huna</ReplacementValue>
-        </TemplateTokens>
-        <TemplateTokens Include="LinuxImage">
-            <ReplacementValue>$(LinuxImage)</ReplacementValue>
-        </TemplateTokens>
-        <TemplateTokens Include="ImageName">
-            <ReplacementValue>$(LinuxImage.Replace(' ', '-').Replace('.', '-').ToLower())</ReplacementValue>
-        </TemplateTokens>
-
-        <TemplateTokens Include="HostIpAddress">
-            <ReplacementValue>192.168.3.25</ReplacementValue>
         </TemplateTokens>
 
         <!-- For the Packer config -->
@@ -565,27 +551,28 @@
         <TemplateTokens Include="DirSrcCookbooksJsonEscaped">
             <ReplacementValue>$(DirBuildTempCookbooks.Replace('\', '/'))</ReplacementValue>
         </TemplateTokens>
-        <TemplateTokens Include="DirSrcProvisioningJsonEscaped">
-            <ReplacementValue>$(DirSrcProvisioning.Replace('\', '/'))</ReplacementValue>
-        </TemplateTokens>
         <TemplateTokens Include="DirTempJsonEscaped">
             <ReplacementValue>$(DirBuildTemp.Replace('\', '/'))</ReplacementValue>
         </TemplateTokens>
         <TemplateTokens Include="DirVendorCookbooksJsonEscaped">
             <ReplacementValue>$(DirVendorCookbooks.Replace('\', '/'))</ReplacementValue>
         </TemplateTokens>
-        <TemplateTokens Include="VmSwitch">
-            <ReplacementValue>VM-LAN</ReplacementValue>
-        </TemplateTokens>
-        <TemplateTokens Include="VmSwitchVlan">
-            <ReplacementValue></ReplacementValue>
-        </TemplateTokens>
 
-        <!-- Directories -->
-        <TemplateTokens Include="DirTestsIntegration">
-            <ReplacementValue>$(DirTestsIntegration)</ReplacementValue>
+        <TemplateTokens Include="DirSrcProvisioningJsonEscaped">
+            <ReplacementValue>$(DirSrcProvisioning.Replace('\', '/'))</ReplacementValue>
+        </TemplateTokens>
+        <TemplateTokens Include="DirTestsIntegrationProvisionJsonEscaped">
+            <ReplacementValue>$(DirTestsIntegrationProvision.Replace('\', '/'))</ReplacementValue>
         </TemplateTokens>
     </ItemGroup>
+
+    <Import
+        Condition="Exists('$(MSBuildThisFileDirectory)packer.azure.props') AND '$(ShouldCreateAzureImage)' == 'true' "
+        Project="$(MSBuildThisFileDirectory)packer.azure.props" />
+
+    <Import
+        Condition="Exists('$(MSBuildThisFileDirectory)packer.hyperv.props') AND '$(ShouldCreateHyperVImage)' == 'true' "
+        Project="$(MSBuildThisFileDirectory)packer.hyperv.props" />
 
 
     <!--
@@ -629,7 +616,7 @@
             The full path and version to the packer command line executable. If not defined the packages directory is searched.
         -->
         <ToolsExternalPackerPath>UNDEFINED</ToolsExternalPackerPath>
-        <ToolsExternalPackerVersion>1.3.4</ToolsExternalPackerVersion>
+        <ToolsExternalPackerVersion>1.5.6</ToolsExternalPackerVersion>
     </PropertyGroup>
 
 
@@ -645,7 +632,7 @@
     -->
 
     <PropertyGroup>
-        <OpsConfigurationVersion>0.3</OpsConfigurationVersion>
+        <OpsConfigurationVersion>1.0</OpsConfigurationVersion>
     </PropertyGroup>
 
     <!--
@@ -653,7 +640,7 @@
         NuGet if no package is specified in the packages.config file.
     -->
     <PropertyGroup>
-        <PackageMinimumVersion Condition=" '$(PackageMinimumVersion)' == '' ">1.0.0</PackageMinimumVersion>
+        <PackageMinimumVersion Condition=" '$(PackageMinimumVersion)' == '' ">1.1.0</PackageMinimumVersion>
         <PackageMaximumVersion Condition=" '$(PackageMaximumVersion)' == '' ">2.0.0</PackageMaximumVersion>
     </PropertyGroup>
 </Project>

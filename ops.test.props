@@ -70,7 +70,7 @@
     <ItemGroup Condition=" '$(ShouldLoadHttpFilesToCopy)' == 'true' ">
         <!-- If the archive file with the exported VM does not exist in the deploy directory then download it from the archive server and unzip it -->
         <HttpFilesToCopy
-            Condition=" '$(IsTest)' == 'true' AND !Exists('$(DirBuildDeploy)') "
+            Condition=" '$(IsTest)' == 'true' AND !Exists('$(DirBuildDeploy)') AND '$(ShouldCreateHyperVImage)' == 'true' "
             Include="$(ArtefactRepositoryToPullFrom)/${ProductNameInFilePath}/${VersionSemantic}/${ProductName}-${VersionSemantic}.zip">
             <Destination>$(DirBuildTemp)\$(ImageName)</Destination>
             <UseDefaultCredentials>false</UseDefaultCredentials>
@@ -88,7 +88,7 @@
     <ItemGroup Condition=" '$(ShouldLoadArchiveFilesToCopy)' == 'true' ">
         <!-- If the archive file with the exported VM exists in the deploy directory unzip it from there -->
         <ArchiveFilesToCopy
-            Condition=" '$(IsTest)' == 'true' AND Exists('$(DirBuildDeploy)') "
+            Condition=" '$(IsTest)' == 'true' AND Exists('$(DirBuildDeploy)') AND '$(ShouldCreateHyperVImage)' == 'true' "
             Include="$(DirBuildDeploy)\${ProductName}-${VersionSemantic}.zip">
             <Destination>$(DirBuildTemp)\${ImageName}</Destination>
         </ArchiveFilesToCopy>
@@ -112,12 +112,29 @@
         Additional parameters can be provided through the 'TemplateTokens' ItemGroup below.
     -->
     <ItemGroup Condition=" '$(ShouldLoadTestFilesToGenerate)' == 'true' ">
-        <TestFilesToGenerate Include="$(DirBuildTempTestsIntegrationPacker)\packer.json">
-            <Template>$(DirTestsIntegrationPacker)\packer.json</Template>
+        <TestFilesToGenerate
+            Condition=" '$(ShouldCreateAzureImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\azure.json">
+            <Template>$(DirTestsIntegrationPacker)\azure.json</Template>
             <Encoding></Encoding>
         </TestFilesToGenerate>
-        <TestFilesToGenerate Include="$(DirBuildTempTestsIntegrationPacker)\packer_variables.json">
-            <Template>$(DirTestsIntegrationPacker)\packer_variables.json</Template>
+        <TestFilesToGenerate
+            Condition=" '$(ShouldCreateAzureImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\azure_variables.json">
+            <Template>$(DirTestsIntegrationPacker)\azure_variables.json</Template>
+            <Encoding></Encoding>
+        </TestFilesToGenerate>
+
+        <TestFilesToGenerate
+            Condition=" '$(ShouldCreateHyperVImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\hyperv.json">
+            <Template>$(DirTestsIntegrationPacker)\hyperv.json</Template>
+            <Encoding></Encoding>
+        </TestFilesToGenerate>
+        <TestFilesToGenerate
+            Condition=" '$(ShouldCreateHyperVImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\hyperv_variables.json">
+            <Template>$(DirTestsIntegrationPacker)\hyperv_variables.json</Template>
             <Encoding></Encoding>
         </TestFilesToGenerate>
 
@@ -165,7 +182,7 @@
     -->
     <ItemGroup Condition=" '$(ShouldLoadIsoPackageSpecs)' == 'true' ">
         <IsoPackageSpecs
-            Condition=" '$(IsTest)' == 'true' "
+            Condition=" '$(IsTest)' == 'true' AND '$(ShouldCreateHyperVImage)' == 'true' "
             Include="$(DirTests)\**\*.isospec" />
     </ItemGroup>
 
@@ -173,6 +190,14 @@
     <!--
         **** INTEGRATION - PACKER ****
     -->
+    <PropertyGroup>
+        <!-- Indicate that packer should remove an existing image before building the new image. -->
+        <PackerForceRemoveOldImage Condition=" '$(ShouldCreateAzureImage)' == 'true' ">true</PackerForceRemoveOldImage>
+
+        <!-- Indicate that packer should keep the image if an error occurs. -->
+        <PackerKeepImageOnError Condition=" '$(ShouldCreateAzureImage)' == 'true' ">false</PackerKeepImageOnError>
+    </PropertyGroup>
+
     <!--
         The item group defining the location and contents of the Packer files that are used during the test
         to validate the Packer images.
@@ -181,10 +206,17 @@
     -->
     <ItemGroup Condition=" '$(ShouldLoadPackerImagesToTest)' == 'true' ">
         <PackerImagesToTest
-            Condition=" '$(DirTestsIntegrationPacker)' != '' AND '$(IsTest)' == 'true'  "
-            Include="$(DirTestsIntegrationPacker)\packer.json">
+            Condition=" '$(ShouldCreateAzureImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\azure.json">
             <Variables>
-                $(DirBuildTempTestsIntegrationPacker)\packer_variables.json
+                $(DirBuildTempTestsIntegrationPacker)\azure_variables.json
+            </Variables>
+        </PackerImagesToTest>
+        <PackerImagesToTest
+            Condition=" '$(ShouldCreateHyperVImage)' == 'true' "
+            Include="$(DirBuildTempTestsIntegrationPacker)\hyperv.json">
+            <Variables>
+                $(DirBuildTempTestsIntegrationPacker)\hyperv_variables.json
             </Variables>
         </PackerImagesToTest>
     </ItemGroup>

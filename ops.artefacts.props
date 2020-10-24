@@ -111,8 +111,8 @@
     -->
     <ItemGroup Condition=" '$(ShouldLoadArchivePackageSpecs)' == 'true' ">
         <ArchivePackageSpecs
-            Condition=" '$(DirSrc)' != '' "
-            Include="$(DirSrc)\**\*.zipspec" />
+            Condition=" '$(ShouldCreateHyperVImage)' == 'true' "
+            Include="$(DirSrcPacker)\hyperv.zipspec" />
     </ItemGroup>
 
 
@@ -144,10 +144,17 @@
     -->
     <ItemGroup Condition=" '$(ShouldLoadPackerImagesToBuild)' == 'true' ">
         <PackerImagesToBuild
-            Condition=" '$(DirSrcPacker)' != '' AND '$(IsBuild)' == 'true'  "
-            Include="$(DirSrcPacker)\packer.json">
+            Condition=" '$(IsBuild)' == 'true' AND '$(ShouldCreateAzureImage)' == 'true' "
+            Include="$(DirBuildTempBuildPacker)\azure.json">
             <Variables>
-                $(DirBuildTemp)\packer_variables.json
+                $(DirBuildTempBuildPacker)\azure_variables.json
+            </Variables>
+        </PackerImagesToBuild>
+        <PackerImagesToBuild
+            Condition=" '$(IsBuild)' == 'true' AND '$(ShouldCreateHyperVImage)' == 'true' "
+            Include="$(DirBuildTempBuildPacker)\hyperv.json">
+            <Variables>
+                $(DirBuildTempBuildPacker)\hyperv_variables.json
             </Variables>
         </PackerImagesToBuild>
     </ItemGroup>
@@ -165,6 +172,6 @@
     -->
 
     <PropertyGroup>
-        <OpsConfigurationVersion>0.3</OpsConfigurationVersion>
+        <OpsConfigurationVersion>1.0</OpsConfigurationVersion>
     </PropertyGroup>
 </Project>

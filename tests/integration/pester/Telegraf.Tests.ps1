@@ -1,24 +1,28 @@
+BeforeAll {
+    $serviceConfigurationPath = '/lib/systemd/system/telegraf.service'
+}
+
 Describe 'On the system' {
     Context 'system metrics' {
         It 'with binaries in /usr/local/bin' {
-            '/usr/bin/telegraf' | Should Exist
+            '/usr/bin/telegraf' | Should -Exist
         }
 
         It 'with default configuration in /etc/telegraf/telegraf.conf' {
-            '/etc/telegraf/telegraf.conf' | Should Exist
+            '/etc/telegraf/telegraf.conf' | Should -Exist
         }
     }
 
     Context 'has been daemonized' {
-        $serviceConfigurationPath = '/lib/systemd/system/telegraf.service'
-        if (-not (Test-Path $serviceConfigurationPath))
-        {
-            It 'has a systemd configuration' {
-                $false | Should Be $true
+        It 'has a systemd configuration' {
+            if (-not (Test-Path $serviceConfigurationPath))
+            {
+                $false | Should -Be $true
             }
         }
 
-        $expectedContent = @'
+        It 'with a systemd service' {
+            $expectedContent = @'
 [Unit]
 Description=The plugin-driven server agent for reporting metrics into InfluxDB
 Documentation=https://github.com/influxdata/telegraf
@@ -37,24 +41,26 @@ KillMode=control-group
 WantedBy=multi-user.target
 
 '@
-        $serviceFileContent = Get-Content $serviceConfigurationPath | Out-String
-        $systemctlOutput = & systemctl status telegraf
-        It 'with a systemd service' {
-            $serviceFileContent | Should Be ($expectedContent -replace "`r", "")
 
-            $systemctlOutput | Should Not Be $null
-            $systemctlOutput.GetType().FullName | Should Be 'System.Object[]'
-            $systemctlOutput.Length | Should BeGreaterThan 3
-            $systemctlOutput[0] | Should Match 'telegraf.service - The plugin-driven server agent for reporting metrics into InfluxDB'
+            $serviceFileContent = Get-Content $serviceConfigurationPath | Out-String
+            $systemctlOutput = & systemctl status telegraf
+            $serviceFileContent | Should -Be ($expectedContent -replace "`r", "")
+
+            $systemctlOutput | Should -Not -Be $null
+            $systemctlOutput.GetType().FullName | Should -Be 'System.Object[]'
+            $systemctlOutput.Length | Should -BeGreaterThan 3
+            $systemctlOutput[0] | Should -Match 'telegraf.service - The plugin-driven server agent for reporting metrics into InfluxDB'
         }
 
         It 'that is enabled' {
-            $systemctlOutput[1] | Should Match 'Loaded:\sloaded\s\(.*;\senabled;.*\)'
+            $systemctlOutput = & systemctl status telegraf
+            $systemctlOutput[1] | Should -Match 'Loaded:\sloaded\s\(.*;\senabled;.*\)'
 
         }
 
         It 'and is running' {
-            $systemctlOutput[2] | Should Match 'Active:\sactive\s\(running\).*'
+            $systemctlOutput = & systemctl status telegraf
+            $systemctlOutput[2] | Should -Match 'Active:\sactive\s\(running\).*'
         }
     }
 }
